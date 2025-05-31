@@ -1,278 +1,325 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
+  const { signIn, user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // 既にログインしている場合はホームページにリダイレクト
+  useEffect(() => {
+    if (!loading && user) {
+      console.log("既にログイン済み - ホームにリダイレクト");
+      router.push("/");
+    }
+  }, [user, loading, router]);
+
+  // URLパラメータからエラーを取得
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "auth_error") {
+      console.log("認証エラーパラメータを検出");
+      setError("認証に問題が発生しました。もう一度ログインしてください。");
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsLoading(true);
     setError("");
+    console.log("ログイン試行:", email); // メールアドレスをログ
 
     try {
-      // 実際のSupabase連携時にはここを修正
-      // 今はモックなので、単純にホームにリダイレクト
-      if (email && password) {
+      console.log("Supabaseログイン処理開始");
+      // Supabaseを使用したログイン
+      const { error: signInError, success } = await signIn(email, password);
+
+      if (signInError) {
+        console.error("ログインエラー詳細:", signInError);
+        // エラーメッセージの日本語化
+        if (signInError.message.includes("Invalid login credentials")) {
+          setError("メールアドレスまたはパスワードが正しくありません");
+        } else if (signInError.message.includes("Email not confirmed")) {
+          setError(
+            "メールアドレスが確認されていません。メールを確認してください"
+          );
+        } else {
+          setError(`ログインに失敗しました: ${signInError.message}`);
+        }
+        console.error("Login error:", signInError);
+        setIsLoading(false);
+        return;
+      }
+
+      if (success) {
+        console.log("ログイン成功 - ホームページへリダイレクト");
+        // ログイン成功時はホームページにリダイレクト
         router.push("/");
-      } else {
-        setError("メールアドレスとパスワードを入力してください");
       }
     } catch (error) {
+      console.error("ログイン例外発生:", error);
       setError("ログインに失敗しました。入力内容を確認してください。");
       console.error("Login error:", error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
+  // ログイン済みまたはロード中の場合はローディング表示
+  if (loading) {
+    return (
+      <div
+        style={{
+          backgroundColor: "#F9FAFB",
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <p>読み込み中...</p>
+      </div>
+    );
+  }
+
+  // ログイン済みの場合は何も表示せずリダイレクト（useEffectで処理）
+  if (user) {
+    return null;
+  }
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{ backgroundColor: "#F9FAFB" }}
+      style={{
+        backgroundColor: "#F9FAFB",
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+      }}
     >
       <div
-        className="bg-white rounded-lg"
         style={{
-          width: "100%",
           maxWidth: "448px",
+          width: "100%",
+          backgroundColor: "#FFFFFF",
+          borderRadius: "8px",
           border: "1px solid #E5E5E5",
           boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
           padding: "25px",
+          margin: "190px auto",
         }}
       >
         <h1
-          className="text-center font-inter"
           style={{
-            fontSize: "24px",
+            fontSize: "23.81px",
             fontWeight: 700,
-            lineHeight: "32px",
-            letterSpacing: "-0.6px",
             color: "#F97316",
+            lineHeight: "1.34em",
+            textAlign: "center",
+            letterSpacing: "-0.025em",
             marginBottom: "6px",
-            fontFamily: "Inter, sans-serif",
           }}
         >
           ムカログ
         </h1>
         <p
-          className="text-center font-inter"
           style={{
             fontSize: "14px",
             fontWeight: 400,
-            lineHeight: "20px",
             color: "#737373",
+            lineHeight: "1.43em",
+            textAlign: "center",
             marginBottom: "24px",
-            fontFamily: "Inter, sans-serif",
           }}
         >
           ムカつきを笑いに変える
         </p>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-500 rounded-md text-sm font-inter">
+          <div
+            style={{
+              padding: "12px",
+              backgroundColor: "#FEF2F2",
+              border: "1px solid #FEE2E2",
+              borderRadius: "6px",
+              color: "#DC2626",
+              fontSize: "14px",
+              marginBottom: "16px",
+            }}
+          >
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "28px" }}>
+          <div style={{ marginBottom: "20px" }}>
             <label
               htmlFor="email"
-              className="font-inter"
               style={{
                 display: "block",
                 fontSize: "14px",
                 fontWeight: 500,
-                lineHeight: "14px",
                 color: "#0A0A0A",
                 marginBottom: "12px",
-                fontFamily: "Inter, sans-serif",
               }}
             >
               メールアドレス
             </label>
-            <div className="relative" style={{ width: "398px" }}>
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                height: "40px",
+                border: "1px solid #E5E5E5",
+                borderRadius: "6px",
+                backgroundColor: "#FFFFFF",
+              }}
+            >
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="font-inter"
+                placeholder="your@example.com"
                 style={{
                   width: "100%",
-                  height: "36px",
-                  padding: "10px 13px",
-                  border: "1px solid #E5E5E5",
+                  height: "100%",
+                  border: "none",
                   borderRadius: "6px",
+                  padding: "0 13px",
                   fontSize: "13.34px",
-                  lineHeight: "16px",
-                  color: "#0A0A0A",
-                  fontFamily: "Inter, sans-serif",
-                  boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
-                  boxSizing: "border-box",
+                  color: "#737373",
+                  outline: "none",
                 }}
-                placeholder="your@example.com"
                 required
               />
             </div>
           </div>
 
-          <div style={{ marginBottom: "16px" }}>
+          <div style={{ marginBottom: "20px" }}>
             <label
               htmlFor="password"
-              className="font-inter"
               style={{
                 display: "block",
                 fontSize: "14px",
                 fontWeight: 500,
-                lineHeight: "14px",
                 color: "#0A0A0A",
                 marginBottom: "12px",
-                fontFamily: "Inter, sans-serif",
               }}
             >
               パスワード
             </label>
-            <div className="relative" style={{ width: "398px" }}>
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                height: "40px",
+                border: "1px solid #E5E5E5",
+                borderRadius: "6px",
+                backgroundColor: "#FFFFFF",
+              }}
+            >
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="font-inter"
-                style={{
-                  width: "100%",
-                  height: "36px",
-                  padding: "10px 13px",
-                  paddingRight: "40px",
-                  border: "1px solid #E5E5E5",
-                  borderRadius: "6px",
-                  fontSize: "13.78px",
-                  lineHeight: "16px",
-                  color: "#0A0A0A",
-                  fontFamily: "Inter, sans-serif",
-                  boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
-                  boxSizing: "border-box",
-                }}
                 placeholder="8文字以上"
+                style={{
+                  width: "calc(100% - 40px)",
+                  height: "100%",
+                  border: "none",
+                  borderRadius: "6px",
+                  padding: "0 13px",
+                  fontSize: "13.89px",
+                  color: "#737373",
+                  outline: "none",
+                }}
                 required
               />
               <button
                 type="button"
-                onClick={togglePasswordVisibility}
+                onClick={() => setShowPassword(!showPassword)}
                 style={{
                   position: "absolute",
-                  top: "50%",
-                  right: "10px",
-                  transform: "translateY(-50%)",
-                  width: "20px",
-                  height: "20px",
+                  right: "0",
+                  top: "0",
+                  width: "40px",
+                  height: "40px",
                   display: "flex",
-                  alignItems: "center",
                   justifyContent: "center",
-                  background: "transparent",
+                  alignItems: "center",
+                  background: "none",
                   border: "none",
                   cursor: "pointer",
-                  padding: 0,
-                  zIndex: 2,
                 }}
               >
-                <div
-                  style={{
-                    position: "relative",
-                    width: "16px",
-                    height: "16px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Image
-                    src="/icons/eye-icon.svg"
-                    alt="パスワードを表示"
-                    width={16}
-                    height={16}
-                    style={{ position: "absolute", inset: 0 }}
-                  />
-                  {!showPassword && (
-                    <Image
-                      src="/icons/eye-dot.svg"
-                      alt=""
-                      width={4}
-                      height={4}
-                      style={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                      }}
-                    />
-                  )}
-                </div>
+                <Image
+                  src="/icons/eye-icon.svg"
+                  alt={showPassword ? "パスワードを隠す" : "パスワードを表示"}
+                  width={16}
+                  height={16}
+                />
               </button>
             </div>
           </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className="font-inter"
+            disabled={isLoading}
             style={{
               width: "100%",
               height: "40px",
+              background: "linear-gradient(to right, #FB923C, #EC4899)",
               borderRadius: "6px",
-              background: "linear-gradient(90deg, #FB923C 0%, #EC4899 100%)",
+              border: "none",
               color: "#FAFAFA",
               fontSize: "14px",
               fontWeight: 500,
-              lineHeight: "20px",
-              textAlign: "center",
-              fontFamily: "Inter, sans-serif",
-              border: "none",
-              boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.7 : 1,
-              marginTop: "16px",
+              lineHeight: "1.43em",
+              cursor: isLoading ? "default" : "pointer",
+              opacity: isLoading ? 0.5 : 1,
+              marginBottom: "24px",
             }}
           >
-            {loading ? "ログイン中..." : "ログイン"}
+            {isLoading ? "ログイン中..." : "ログイン"}
           </button>
         </form>
 
         <div
           style={{
-            marginTop: "26px",
-            textAlign: "center",
-            fontSize: "14px",
-            lineHeight: "20px",
-            fontFamily: "Inter, sans-serif",
             display: "flex",
             justifyContent: "center",
+            marginTop: "12px",
           }}
         >
-          <span style={{ color: "#4B5563" }}>
+          <span
+            style={{
+              fontSize: "14px",
+              fontWeight: 400,
+              color: "#4B5563",
+              lineHeight: "1.43em",
+            }}
+          >
             アカウントをお持ちでない方は{" "}
           </span>
           <Link
             href="/signup"
             style={{
-              color: "#F97316",
+              fontSize: "14px",
               fontWeight: 500,
+              color: "#F97316",
+              lineHeight: "1.43em",
               textDecoration: "none",
-              marginLeft: "4px",
             }}
           >
             新規登録

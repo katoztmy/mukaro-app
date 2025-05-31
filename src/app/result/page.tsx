@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+import Header from "@/components/layout/Header";
 
 export default function ResultPage() {
   const searchParams = useSearchParams();
@@ -11,6 +13,7 @@ export default function ResultPage() {
   const [style, setStyle] = useState<"ogiri" | "senryu">("ogiri");
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(true);
+  const [reaction, setReaction] = useState<"like" | "dislike" | null>(null);
 
   useEffect(() => {
     // URLパラメータから入力テキストとスタイルを取得
@@ -31,149 +34,434 @@ export default function ResultPage() {
       if (styleParam === "senryu") {
         setResult("ムカつくね\n電車の隣人は\n音漏れ魔王");
       } else {
-        setResult(
-          "大音量で動画を見る隣人、あなたの脳内で作られた映像の方が面白そうです"
-        );
+        setResult("急いでるのに、あなたの小銭タイムショー、素晴らしいね！");
       }
       setLoading(false);
     }, 1500);
   }, [searchParams, router]);
 
-  const copyResult = () => {
-    navigator.clipboard.writeText(result);
-    alert("コピーしました！");
+  const handleReaction = (type: "like" | "dislike") => {
+    setReaction(type);
+  };
+
+  const shareOnTwitter = () => {
+    const text = encodeURIComponent(
+      `${result}\n\n#ムカログ #${style === "ogiri" ? "大喜利" : "川柳"}`
+    );
+    window.open(`https://twitter.com/intent/tweet?text=${text}`, "_blank");
+  };
+
+  const shareOnLine = () => {
+    const text = encodeURIComponent(
+      `${result}\n\n#ムカログ #${style === "ogiri" ? "大喜利" : "川柳"}`
+    );
+    window.open(`https://line.me/R/msg/text/?${text}`, "_blank");
+  };
+
+  const convertAgain = () => {
+    router.back();
+  };
+
+  const newInput = () => {
+    router.push("/");
   };
 
   return (
-    <div className="min-h-screen bg-base flex flex-col">
+    <div style={{ backgroundColor: "#F9FAFB", minHeight: "100vh" }}>
       {/* ヘッダー */}
-      <header className="bg-white border-b border-border shadow-sm">
-        <div className="max-w-md mx-auto px-4 py-3 flex justify-center items-center">
-          <h1 className="text-xl font-bold text-orange">変換結果</h1>
-        </div>
-      </header>
+      <Header showHistoryButton={false} />
 
       {/* メインコンテンツ */}
-      <main className="flex-1 py-10 px-4">
-        <div className="max-w-md mx-auto space-y-6">
-          {/* 元の投稿 */}
-          <div className="bg-white rounded-lg shadow-sm border border-border p-4">
-            <div className="inline-block px-3 py-1 rounded-full border border-border mb-3">
-              <span className="text-xs font-semibold text-text">元の投稿</span>
-            </div>
-            <p className="text-text-secondary text-sm">{inputText}</p>
-          </div>
-
-          {/* 変換結果 */}
-          <div className="bg-gradient-to-br from-[#FEFCE8] to-[#FFF7ED] rounded-lg shadow-sm border-2 border-[#FEF08A] p-6">
-            <div className="inline-block px-3 py-1 rounded-full bg-gradient-to-r from-[#A855F7] to-[#EC4899] mb-4">
-              <span className="text-xs font-semibold text-white">
-                {style === "ogiri" ? "大喜利" : "川柳"}
-              </span>
-            </div>
-            {loading ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="w-10 h-10 border-4 border-orange rounded-full border-t-transparent animate-spin"></div>
-              </div>
-            ) : (
-              <p className="text-lg font-medium text-text text-center whitespace-pre-line">
-                {result}
-              </p>
-            )}
-          </div>
-
-          {/* リアクション */}
-          <div className="bg-white rounded-lg shadow-sm border border-border p-4">
-            <h3 className="text-center font-medium text-text mb-4">
-              スッキリした？
-            </h3>
-            <div className="flex space-x-3">
-              <button className="flex-1 py-3 px-4 flex items-center justify-center space-x-2 border border-border rounded-md">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M5 7L8 10L11 7"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span className="font-medium text-text">スッキリ！</span>
-              </button>
-              <button className="flex-1 py-3 px-4 flex items-center justify-center space-x-2 border border-border rounded-md">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M5 9L8 6L11 9"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span className="font-medium text-text">うーん...</span>
-              </button>
-            </div>
-          </div>
-
-          {/* ボタン */}
-          <button
-            onClick={() => router.push("/")}
-            className="w-full py-3 px-4 rounded-md border border-border flex items-center justify-center space-x-2 font-medium text-text"
-            disabled={loading}
+      <main style={{ maxWidth: "448px", margin: "0 auto" }}>
+        {/* 元の投稿 */}
+        <div
+          style={{
+            marginTop: "40px",
+            backgroundColor: "#FFFFFF",
+            border: "1px solid #E5E5E5",
+            borderRadius: "8px",
+            boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
+            padding: "17px",
+          }}
+        >
+          <div
+            style={{
+              display: "inline-block",
+              border: "1px solid #E5E5E5",
+              borderRadius: "9999px",
+              padding: "4px 11px",
+              marginBottom: "8px",
+            }}
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+            <span
+              style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "#0A0A0A",
+                lineHeight: "1.33em",
+              }}
             >
-              <path
-                d="M2 8H14M7 3L2 8L7 13"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span>もう一度変換</span>
-          </button>
-
-          <button
-            onClick={copyResult}
-            className="w-full py-3 px-4 rounded-md bg-gradient-to-r from-gradient-from to-gradient-to text-white flex items-center justify-center space-x-2 font-medium"
-            disabled={loading}
+              元の投稿
+            </span>
+          </div>
+          <p
+            style={{
+              fontSize: "12.47px",
+              color: "#4B5563",
+              lineHeight: "1.82em",
+            }}
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M8 3V13M3 8H13"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span>新しく入力する</span>
-          </button>
+            {inputText}
+          </p>
         </div>
+
+        {/* 変換結果 */}
+        <div
+          style={{
+            marginTop: "16px",
+            background: "linear-gradient(45deg, #FEFCE8, #FFF7ED)",
+            border: "2px solid #FEF08A",
+            borderRadius: "8px",
+            boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
+            padding: "26px",
+          }}
+        >
+          <div
+            style={{
+              display: "inline-block",
+              background: "linear-gradient(to right, #A855F7, #EC4899)",
+              borderRadius: "9999px",
+              padding: "4px 11px",
+              marginBottom: "20px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "#FAFAFA",
+                lineHeight: "1.33em",
+              }}
+            >
+              {style === "ogiri" ? "大喜利" : "川柳"}
+            </span>
+          </div>
+          {loading ? (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "100px",
+              }}
+            >
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  border: "4px solid #F97316",
+                  borderRadius: "50%",
+                  borderTopColor: "transparent",
+                  animation: "spin 1s linear infinite",
+                }}
+              ></div>
+              <style jsx>{`
+                @keyframes spin {
+                  0% {
+                    transform: rotate(0deg);
+                  }
+                  100% {
+                    transform: rotate(360deg);
+                  }
+                }
+              `}</style>
+            </div>
+          ) : (
+            <p
+              style={{
+                fontSize: "18px",
+                fontWeight: 500,
+                color: "#111827",
+                textAlign: "center",
+                lineHeight: "1.625em",
+                whiteSpace: "pre-line",
+              }}
+            >
+              {result}
+            </p>
+          )}
+        </div>
+
+        {/* リアクション */}
+        <div
+          style={{
+            marginTop: "16px",
+            backgroundColor: "#FFFFFF",
+            border: "1px solid #E5E5E5",
+            borderRadius: "8px",
+            boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
+            padding: "17px",
+          }}
+        >
+          <h3
+            style={{
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "#374151",
+              textAlign: "center",
+              marginBottom: "12px",
+              lineHeight: "1.43em",
+            }}
+          >
+            スッキリした？
+          </h3>
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+            }}
+          >
+            <button
+              onClick={() => handleReaction("like")}
+              style={{
+                flex: 1,
+                height: "40px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "16px",
+                border:
+                  reaction === "like"
+                    ? "2px solid #10B981"
+                    : "1px solid #E5E5E5",
+                borderRadius: "6px",
+                backgroundColor: reaction === "like" ? "#F0FDF4" : "#FFFFFF",
+                cursor: "pointer",
+              }}
+            >
+              <Image
+                src="/icons/thumbs-up.svg"
+                alt="👍"
+                width={16}
+                height={16}
+              />
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#0A0A0A",
+                  lineHeight: "1.43em",
+                }}
+              >
+                スッキリ！
+              </span>
+            </button>
+            <button
+              onClick={() => handleReaction("dislike")}
+              style={{
+                flex: 1,
+                height: "40px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "16px",
+                border:
+                  reaction === "dislike"
+                    ? "2px solid #EF4444"
+                    : "1px solid #E5E5E5",
+                borderRadius: "6px",
+                backgroundColor: reaction === "dislike" ? "#FEF2F2" : "#FFFFFF",
+                cursor: "pointer",
+              }}
+            >
+              <Image
+                src="/icons/thumbs-down.svg"
+                alt="👎"
+                width={16}
+                height={16}
+              />
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#0A0A0A",
+                  lineHeight: "1.43em",
+                }}
+              >
+                うーん...
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* シェア */}
+        <div
+          style={{
+            marginTop: "16px",
+            backgroundColor: "#FFFFFF",
+            border: "1px solid #E5E5E5",
+            borderRadius: "8px",
+            boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
+            padding: "17px",
+          }}
+        >
+          <h3
+            style={{
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "#374151",
+              textAlign: "center",
+              marginBottom: "12px",
+              lineHeight: "1.43em",
+            }}
+          >
+            シェアする
+          </h3>
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+            }}
+          >
+            <button
+              onClick={shareOnTwitter}
+              style={{
+                flex: 1,
+                height: "40px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "16px",
+                border: "1px solid #E5E5E5",
+                borderRadius: "6px",
+                backgroundColor: "#FFFFFF",
+                cursor: "pointer",
+              }}
+              disabled={loading}
+            >
+              <Image src="/icons/twitter.svg" alt="X" width={16} height={16} />
+              <span
+                style={{
+                  fontSize: "12.58px",
+                  fontWeight: 500,
+                  color: "#0A0A0A",
+                  lineHeight: "1.59em",
+                }}
+              >
+                X (Twitter)
+              </span>
+            </button>
+            <button
+              onClick={shareOnLine}
+              style={{
+                flex: 1,
+                height: "40px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "16px",
+                border: "1px solid #E5E5E5",
+                borderRadius: "6px",
+                backgroundColor: "#FFFFFF",
+                cursor: "pointer",
+              }}
+              disabled={loading}
+            >
+              <div
+                style={{ position: "relative", width: "16px", height: "16px" }}
+              >
+                <Image
+                  src="/icons/line-1.svg"
+                  alt="LINE"
+                  width={16}
+                  height={16}
+                />
+              </div>
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#0A0A0A",
+                  lineHeight: "1.43em",
+                }}
+              >
+                LINE
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* アクションボタン */}
+        <button
+          onClick={convertAgain}
+          style={{
+            width: "100%",
+            height: "40px",
+            marginTop: "24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "16px",
+            border: "1px solid #E5E5E5",
+            borderRadius: "6px",
+            backgroundColor: "#FFFFFF",
+            cursor: "pointer",
+          }}
+          disabled={loading}
+        >
+          <Image
+            src="/icons/convert-again-1.svg"
+            alt="もう一度"
+            width={16}
+            height={16}
+          />
+          <span
+            style={{
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "#0A0A0A",
+              lineHeight: "1.43em",
+            }}
+          >
+            もう一度変換
+          </span>
+        </button>
+
+        <button
+          onClick={newInput}
+          style={{
+            width: "100%",
+            height: "40px",
+            marginTop: "16px",
+            marginBottom: "40px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "16px",
+            border: "none",
+            borderRadius: "6px",
+            background: "linear-gradient(to right, #FB923C, #EC4899)",
+            cursor: "pointer",
+          }}
+          disabled={loading}
+        >
+          <Image
+            src="/icons/input-new.svg"
+            alt="新しく"
+            width={16}
+            height={16}
+          />
+          <span
+            style={{
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "#FAFAFA",
+              lineHeight: "1.43em",
+            }}
+          >
+            新しく入力する
+          </span>
+        </button>
       </main>
     </div>
   );
