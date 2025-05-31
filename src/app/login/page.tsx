@@ -103,19 +103,20 @@ export default function LoginPage() {
         backgroundColor: "#F9FAFB",
         minHeight: "100vh",
         display: "flex",
+        flexDirection: "column",
         justifyContent: "center",
+        alignItems: "center",
       }}
     >
       <div
         style={{
-          maxWidth: "448px",
-          width: "100%",
+          maxWidth: "360px",
+          width: "90%",
           backgroundColor: "#FFFFFF",
           borderRadius: "8px",
           border: "1px solid #E5E5E5",
           boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
           padding: "25px",
-          margin: "190px auto",
         }}
       >
         <h1
@@ -182,6 +183,7 @@ export default function LoginPage() {
                 border: "1px solid #E5E5E5",
                 borderRadius: "6px",
                 backgroundColor: "#FFFFFF",
+                boxSizing: "border-box",
               }}
             >
               <input
@@ -199,6 +201,7 @@ export default function LoginPage() {
                   fontSize: "13.34px",
                   color: "#737373",
                   outline: "none",
+                  boxSizing: "border-box",
                 }}
                 required
               />
@@ -226,6 +229,7 @@ export default function LoginPage() {
                 border: "1px solid #E5E5E5",
                 borderRadius: "6px",
                 backgroundColor: "#FFFFFF",
+                boxSizing: "border-box",
               }}
             >
               <input
@@ -243,6 +247,7 @@ export default function LoginPage() {
                   fontSize: "13.89px",
                   color: "#737373",
                   outline: "none",
+                  boxSizing: "border-box",
                 }}
                 required
               />
@@ -288,7 +293,7 @@ export default function LoginPage() {
               lineHeight: "1.43em",
               cursor: isLoading ? "default" : "pointer",
               opacity: isLoading ? 0.5 : 1,
-              marginBottom: "24px",
+              marginBottom: "0",
             }}
           >
             {isLoading ? "ログイン中..." : "ログイン"}
@@ -299,7 +304,8 @@ export default function LoginPage() {
           style={{
             display: "flex",
             justifyContent: "center",
-            marginTop: "12px",
+            marginTop: "8px",
+            marginBottom: "0",
           }}
         >
           <span
