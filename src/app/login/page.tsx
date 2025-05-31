@@ -7,7 +7,25 @@ import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import Cookies from "js-cookie";
 
-// useSearchParamsを使用するコンポーネントを別に作成
+// SearchParamsを使用するコンポーネント
+function LoginWithSearchParams({
+  onError,
+}: {
+  onError: (error: string) => void;
+}) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const errorParam = searchParams?.get("error");
+    if (errorParam === "auth_error") {
+      onError("認証に問題が発生しました。もう一度ログインしてください。");
+    }
+  }, [searchParams, onError]);
+
+  return null;
+}
+
+// メインのログインコンテンツコンポーネント
 function LoginContent() {
   const { signIn, user, session, loading, refreshSession } = useAuth();
   const [email, setEmail] = useState("");
@@ -16,7 +34,6 @@ function LoginContent() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [redirecting, setRedirecting] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
@@ -109,13 +126,10 @@ function LoginContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, session, initialLoadComplete, redirecting]);
 
-  // URLパラメータからエラーを取得
-  useEffect(() => {
-    const errorParam = searchParams.get("error");
-    if (errorParam === "auth_error") {
-      setError("認証に問題が発生しました。もう一度ログインしてください。");
-    }
-  }, [searchParams]);
+  // URLパラメータからエラーを取得するハンドラー
+  const handleError = (errorMessage: string) => {
+    setError(errorMessage);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,6 +264,11 @@ function LoginContent() {
 
   return (
     <div style={{ backgroundColor: "#F9FAFB", minHeight: "100vh" }}>
+      {/* SearchParamsを使用するコンポーネントをSuspense内で使用 */}
+      <Suspense fallback={null}>
+        <LoginWithSearchParams onError={handleError} />
+      </Suspense>
+
       <main
         style={{
           maxWidth: "400px",

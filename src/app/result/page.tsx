@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -13,8 +13,46 @@ import {
 } from "@/utils/posts";
 import { supabase } from "@/utils/supabase";
 
-export default function ResultPage() {
+// SearchParamsを使用するコンポーネント
+function ResultContent({
+  onParamsLoaded,
+}: {
+  onParamsLoaded: (params: {
+    input: string | null;
+    styleParam: string | null;
+    resultParam: string | null;
+    id: string | null;
+    category: string | null;
+    fromHome: boolean;
+  }) => void;
+}) {
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (!searchParams) return;
+
+    // URLパラメータから入力テキスト、スタイル、結果を取得
+    const input = searchParams?.get("input");
+    const styleParam = searchParams?.get("style");
+    const resultParam = searchParams?.get("result");
+    const id = searchParams?.get("id");
+    const category = searchParams?.get("category_id");
+    const fromHome = searchParams?.get("from_home") === "true"; // ホームから来たかどうかのフラグ
+
+    onParamsLoaded({
+      input,
+      styleParam,
+      resultParam,
+      id,
+      category,
+      fromHome,
+    });
+  }, [searchParams, onParamsLoaded]);
+
+  return null;
+}
+
+export default function ResultPage() {
   const router = useRouter();
   const [inputText, setInputText] = useState("");
   const [style, setStyle] = useState<"ogiri" | "senryu">("ogiri");
@@ -29,6 +67,14 @@ export default function ResultPage() {
     maxDailyLimit: number;
   }>({ remainingCalls: 5, maxDailyLimit: 5 });
   const [token, setToken] = useState<string | null>(null);
+  const [urlParams, setUrlParams] = useState<{
+    input: string | null;
+    styleParam: string | null;
+    resultParam: string | null;
+    id: string | null;
+    category: string | null;
+    fromHome: boolean;
+  } | null>(null);
 
   // 投稿が保存されたかどうかを追跡するref
   const hasSavedRef = useRef(false);
@@ -58,16 +104,23 @@ export default function ResultPage() {
     }
   };
 
-  useEffect(() => {
-    if (!searchParams) return;
+  // URLパラメータが読み込まれたときの処理
+  const handleParamsLoaded = (params: {
+    input: string | null;
+    styleParam: string | null;
+    resultParam: string | null;
+    id: string | null;
+    category: string | null;
+    fromHome: boolean;
+  }) => {
+    setUrlParams(params);
+  };
 
-    // URLパラメータから入力テキスト、スタイル、結果を取得
-    const input = searchParams.get("input");
-    const styleParam = searchParams.get("style");
-    const resultParam = searchParams.get("result");
-    const id = searchParams.get("id");
-    const category = searchParams.get("category_id");
-    const fromHome = searchParams.get("from_home") === "true"; // ホームから来たかどうかのフラグ
+  useEffect(() => {
+    if (!urlParams) return;
+
+    const { input, styleParam, resultParam, id, category, fromHome } =
+      urlParams;
 
     if (category) {
       setCategoryId(category);
@@ -154,17 +207,15 @@ export default function ResultPage() {
             setPostId(newPost.id);
 
             // 新しい投稿IDをURLに追加（from_homeフラグは削除）
-            if (searchParams) {
-              const params = new URLSearchParams();
-              params.set("input", input);
-              params.set("style", styleParam || "ogiri");
-              params.set("result", resultParam);
-              params.set("id", newPost.id);
-              if (category) params.set("category_id", category);
+            const params = new URLSearchParams();
+            params.set("input", input);
+            params.set("style", styleParam || "ogiri");
+            params.set("result", resultParam);
+            params.set("id", newPost.id);
+            if (category) params.set("category_id", category);
 
-              // URLを更新してホームフラグを削除
-              router.replace(`/result?${params.toString()}`);
-            }
+            // URLを更新してホームフラグを削除
+            router.replace(`/result?${params.toString()}`);
           } catch (error) {
             console.error("投稿の保存に失敗しました:", error);
           } finally {
@@ -211,16 +262,14 @@ export default function ResultPage() {
                 setPostId(newPost.id);
 
                 // 新しい投稿IDをURLに追加
-                if (searchParams) {
-                  const params = new URLSearchParams();
-                  params.set("input", input);
-                  params.set("style", styleParam || "ogiri");
-                  params.set("result", data.result);
-                  params.set("id", newPost.id);
-                  if (category) params.set("category_id", category);
+                const params = new URLSearchParams();
+                params.set("input", input);
+                params.set("style", styleParam || "ogiri");
+                params.set("result", data.result);
+                params.set("id", newPost.id);
+                if (category) params.set("category_id", category);
 
-                  router.replace(`/result?${params.toString()}`);
-                }
+                router.replace(`/result?${params.toString()}`);
               } catch (error) {
                 console.error("投稿の保存に失敗しました:", error);
               } finally {
@@ -240,7 +289,7 @@ export default function ResultPage() {
     };
 
     fetchData();
-  }, [searchParams, router]);
+  }, [urlParams, router, token]);
 
   const handleReaction = async (type: "like" | "dislike") => {
     setReaction(type);
@@ -379,6 +428,11 @@ export default function ResultPage() {
 
   return (
     <div style={{ backgroundColor: "#F9FAFB", minHeight: "100vh" }}>
+      {/* SearchParamsを使用するコンポーネントをSuspenseでラップ */}
+      <Suspense fallback={null}>
+        <ResultContent onParamsLoaded={handleParamsLoaded} />
+      </Suspense>
+
       {/* ヘッダー */}
       <Header showHistoryButton={true} />
 
