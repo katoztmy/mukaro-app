@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import Cookies from "js-cookie";
 
-export default function LoginPage() {
+// useSearchParamsを使用するコンポーネントを別に作成
+function LoginContent() {
   const { signIn, user, session, loading, refreshSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -248,240 +249,285 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      style={{
-        backgroundColor: "#F9FAFB",
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <div
+    <div style={{ backgroundColor: "#F9FAFB", minHeight: "100vh" }}>
+      <main
         style={{
-          maxWidth: "360px",
-          width: "90%",
-          backgroundColor: "#FFFFFF",
-          borderRadius: "8px",
-          border: "1px solid #E5E5E5",
-          boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
-          padding: "25px",
+          maxWidth: "400px",
+          margin: "0 auto",
+          padding: "40px 16px",
         }}
       >
-        <h1
+        <div
           style={{
-            fontSize: "23.81px",
-            fontWeight: 700,
-            color: "#F97316",
-            lineHeight: "1.34em",
             textAlign: "center",
-            letterSpacing: "-0.025em",
-            marginBottom: "6px",
+            marginBottom: "40px",
           }}
         >
-          ムカログ
-        </h1>
-        <p
-          style={{
-            fontSize: "14px",
-            fontWeight: 400,
-            color: "#737373",
-            lineHeight: "1.43em",
-            textAlign: "center",
-            marginBottom: "24px",
-          }}
-        >
-          ムカつきを笑いに変える
-        </p>
-
-        {error && (
-          <div
+          <h1
             style={{
-              padding: "12px",
-              backgroundColor: "#FEF2F2",
-              border: "1px solid #FEE2E2",
-              borderRadius: "6px",
-              color: "#DC2626",
-              fontSize: "14px",
-              marginBottom: "16px",
+              fontSize: "24px",
+              fontWeight: 700,
+              color: "#F97316",
+              marginBottom: "8px",
+              lineHeight: "1.33em",
             }}
           >
-            {error}
-          </div>
-        )}
+            ムカログ
+          </h1>
+          <p
+            style={{
+              fontSize: "14px",
+              color: "#4B5563",
+              lineHeight: "1.43em",
+            }}
+          >
+            あなたのムカつきを笑いに変えます
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "20px" }}>
-            <label
-              htmlFor="email"
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: 500,
-                color: "#0A0A0A",
-                marginBottom: "12px",
-              }}
-            >
-              メールアドレス
-            </label>
-            <div
-              style={{
-                position: "relative",
-                width: "100%",
-                height: "40px",
-                border: "1px solid #E5E5E5",
-                borderRadius: "6px",
-                backgroundColor: "#FFFFFF",
-                boxSizing: "border-box",
-              }}
-            >
+        <div
+          style={{
+            backgroundColor: "#FFFFFF",
+            border: "1px solid #E5E5E5",
+            borderRadius: "8px",
+            boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
+            padding: "24px",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "18px",
+              fontWeight: 600,
+              color: "#111827",
+              marginBottom: "24px",
+              textAlign: "center",
+              lineHeight: "1.33em",
+            }}
+          >
+            ログイン
+          </h2>
+
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: "16px" }}>
+              <label
+                htmlFor="email"
+                style={{
+                  display: "block",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#374151",
+                  marginBottom: "8px",
+                  lineHeight: "1.43em",
+                }}
+              >
+                メールアドレス
+              </label>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@example.com"
+                required
                 style={{
                   width: "100%",
-                  height: "100%",
-                  border: "none",
+                  height: "40px",
+                  padding: "8px 12px",
+                  fontSize: "14px",
+                  color: "#111827",
+                  border: "1px solid #E5E5E5",
                   borderRadius: "6px",
-                  padding: "0 13px",
-                  fontSize: "13.34px",
-                  color: "#737373",
                   outline: "none",
-                  boxSizing: "border-box",
+                  lineHeight: "1.43em",
                 }}
-                required
+                placeholder="example@example.com"
               />
             </div>
-          </div>
 
-          <div style={{ marginBottom: "20px" }}>
-            <label
-              htmlFor="password"
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: 500,
-                color: "#0A0A0A",
-                marginBottom: "12px",
-              }}
-            >
-              パスワード
-            </label>
-            <div
-              style={{
-                position: "relative",
-                width: "100%",
-                height: "40px",
-                border: "1px solid #E5E5E5",
-                borderRadius: "6px",
-                backgroundColor: "#FFFFFF",
-                boxSizing: "border-box",
-              }}
-            >
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="8文字以上"
+            <div style={{ marginBottom: "24px" }}>
+              <label
+                htmlFor="password"
                 style={{
-                  width: "calc(100% - 40px)",
-                  height: "100%",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "0 13px",
-                  fontSize: "13.89px",
-                  color: "#737373",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: "absolute",
-                  right: "0",
-                  top: "0",
-                  width: "40px",
-                  height: "40px",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
+                  display: "block",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#374151",
+                  marginBottom: "8px",
+                  lineHeight: "1.43em",
                 }}
               >
-                <Image
-                  src="/icons/eye-icon.svg"
-                  alt={showPassword ? "パスワードを隠す" : "パスワードを表示"}
-                  width={16}
-                  height={16}
+                パスワード
+              </label>
+              <div
+                style={{
+                  position: "relative",
+                }}
+              >
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    height: "40px",
+                    padding: "8px 12px",
+                    fontSize: "14px",
+                    color: "#111827",
+                    border: "1px solid #E5E5E5",
+                    borderRadius: "6px",
+                    outline: "none",
+                    lineHeight: "1.43em",
+                  }}
+                  placeholder="••••••••"
                 />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "0",
+                  }}
+                  aria-label={
+                    showPassword ? "パスワードを隠す" : "パスワードを表示"
+                  }
+                >
+                  <Image
+                    src={
+                      showPassword ? "/icons/eye-slash.svg" : "/icons/eye.svg"
+                    }
+                    alt={showPassword ? "パスワードを隠す" : "パスワードを表示"}
+                    width={16}
+                    height={16}
+                  />
+                </button>
+              </div>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            style={{
-              width: "100%",
-              height: "40px",
-              background: "linear-gradient(to right, #FB923C, #EC4899)",
-              borderRadius: "6px",
-              border: "none",
-              color: "#FAFAFA",
-              fontSize: "14px",
-              fontWeight: 500,
-              lineHeight: "1.43em",
-              cursor: isLoading ? "default" : "pointer",
-              opacity: isLoading ? 0.5 : 1,
-              marginBottom: "0",
-            }}
-          >
-            {isLoading ? "ログイン中..." : "ログイン"}
-          </button>
-        </form>
+            {error && (
+              <div
+                style={{
+                  backgroundColor: "#FEF2F2",
+                  color: "#EF4444",
+                  padding: "12px",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  marginBottom: "24px",
+                  lineHeight: "1.43em",
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              style={{
+                width: "100%",
+                height: "48px",
+                borderRadius: "6px",
+                background: "linear-gradient(to right, #FB923C, #EC4899)",
+                fontSize: "16px",
+                fontWeight: 500,
+                color: "white",
+                border: "none",
+                boxShadow:
+                  "0px 4px 6px -4px rgba(0, 0, 0, 0.1), 0px 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                cursor: "pointer",
+                lineHeight: "1.5em",
+              }}
+              disabled={isLoading}
+            >
+              {isLoading ? "ログイン中..." : "ログイン"}
+            </button>
+          </form>
+        </div>
 
         <div
           style={{
-            display: "flex",
-            justifyContent: "center",
-            marginTop: "8px",
-            marginBottom: "0",
+            textAlign: "center",
+            marginTop: "24px",
           }}
         >
-          <span
+          <p
             style={{
               fontSize: "14px",
-              fontWeight: 400,
               color: "#4B5563",
               lineHeight: "1.43em",
             }}
           >
-            アカウントをお持ちでない方は{" "}
-          </span>
-          <Link
-            href="/signup"
-            style={{
-              fontSize: "14px",
-              fontWeight: 500,
-              color: "#F97316",
-              lineHeight: "1.43em",
-              textDecoration: "none",
-            }}
-          >
-            新規登録
-          </Link>
+            アカウントをお持ちでない場合は
+            <Link
+              href="/signup"
+              style={{
+                color: "#F97316",
+                textDecoration: "none",
+                fontWeight: 500,
+              }}
+            >
+              新規登録
+            </Link>
+          </p>
         </div>
-      </div>
+      </main>
     </div>
+  );
+}
+
+// フォールバックのローディングコンポーネント
+function LoginFallback() {
+  return (
+    <div
+      style={{
+        backgroundColor: "#F9FAFB",
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "column",
+        fontFamily: "sans-serif",
+      }}
+    >
+      <h2 style={{ color: "#F97316", marginBottom: "16px" }}>ムカログ</h2>
+      <p style={{ marginBottom: "24px" }}>読み込み中...</p>
+      <div
+        style={{
+          width: "40px",
+          height: "40px",
+          border: "4px solid #F97316",
+          borderRadius: "50%",
+          borderTopColor: "transparent",
+          animation: "spin 1s linear infinite",
+        }}
+      />
+      <style jsx>{`
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// メインコンポーネント
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginContent />
+    </Suspense>
   );
 }
