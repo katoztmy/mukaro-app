@@ -39,77 +39,140 @@ export default function ResultPage() {
     }, 1500);
   }, [searchParams, router]);
 
+  const copyResult = () => {
+    navigator.clipboard.writeText(result);
+    alert("コピーしました！");
+  };
+
   return (
     <div className="min-h-screen bg-base flex flex-col">
       {/* ヘッダー */}
-      <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-md mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-primary-orange">ムカログ</h1>
+      <header className="bg-white border-b border-border shadow-sm">
+        <div className="max-w-md mx-auto px-4 py-3 flex justify-center items-center">
+          <h1 className="text-xl font-bold text-orange">変換結果</h1>
         </div>
       </header>
 
       {/* メインコンテンツ */}
       <main className="flex-1 py-10 px-4">
-        <div className="max-w-md mx-auto">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-xl font-bold text-text mb-6 text-center">
-              変換結果
-            </h2>
+        <div className="max-w-md mx-auto space-y-6">
+          {/* 元の投稿 */}
+          <div className="bg-white rounded-lg shadow-sm border border-border p-4">
+            <div className="inline-block px-3 py-1 rounded-full border border-border mb-3">
+              <span className="text-xs font-semibold text-text">元の投稿</span>
+            </div>
+            <p className="text-text-secondary text-sm">{inputText}</p>
+          </div>
 
+          {/* 変換結果 */}
+          <div className="bg-gradient-to-br from-[#FEFCE8] to-[#FFF7ED] rounded-lg shadow-sm border-2 border-[#FEF08A] p-6">
+            <div className="inline-block px-3 py-1 rounded-full bg-gradient-to-r from-[#A855F7] to-[#EC4899] mb-4">
+              <span className="text-xs font-semibold text-white">
+                {style === "ogiri" ? "大喜利" : "川柳"}
+              </span>
+            </div>
             {loading ? (
-              <div className="flex justify-center items-center py-10">
-                <div className="w-10 h-10 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+              <div className="flex justify-center items-center py-8">
+                <div className="w-10 h-10 border-4 border-orange rounded-full border-t-transparent animate-spin"></div>
               </div>
             ) : (
-              <>
-                <div className="mb-6">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">
-                    入力したムカつき
-                  </h3>
-                  <p className="p-3 bg-gray-50 rounded-md text-text">
-                    {inputText}
-                  </p>
-                </div>
-
-                <div className="mb-6">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">
-                    変換スタイル
-                  </h3>
-                  <p className="p-3 bg-gradient-to-r from-purple-400 to-pink-400 text-white rounded-md inline-block px-4">
-                    {style === "ogiri" ? "大喜利" : "川柳"}
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">
-                    変換結果
-                  </h3>
-                  <div className="p-4 bg-yellow-50 rounded-md border border-yellow-100 text-text whitespace-pre-line">
-                    {result}
-                  </div>
-                </div>
-              </>
+              <p className="text-lg font-medium text-text text-center whitespace-pre-line">
+                {result}
+              </p>
             )}
           </div>
 
-          <div className="flex space-x-3">
-            <Link
-              href="/"
-              className="flex-1 py-3 px-4 rounded-md text-center font-medium bg-white border border-gray-300 text-text"
-            >
-              もう一度変換する
-            </Link>
-            <button
-              className="flex-1 py-3 px-4 rounded-md text-center font-medium text-white bg-gradient-to-r from-gradient-from to-gradient-to"
-              onClick={() => {
-                navigator.clipboard.writeText(result);
-                alert("コピーしました！");
-              }}
-              disabled={loading}
-            >
-              結果をコピー
-            </button>
+          {/* リアクション */}
+          <div className="bg-white rounded-lg shadow-sm border border-border p-4">
+            <h3 className="text-center font-medium text-text mb-4">
+              スッキリした？
+            </h3>
+            <div className="flex space-x-3">
+              <button className="flex-1 py-3 px-4 flex items-center justify-center space-x-2 border border-border rounded-md">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M5 7L8 10L11 7"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="font-medium text-text">スッキリ！</span>
+              </button>
+              <button className="flex-1 py-3 px-4 flex items-center justify-center space-x-2 border border-border rounded-md">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M5 9L8 6L11 9"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="font-medium text-text">うーん...</span>
+              </button>
+            </div>
           </div>
+
+          {/* ボタン */}
+          <button
+            onClick={() => router.push("/")}
+            className="w-full py-3 px-4 rounded-md border border-border flex items-center justify-center space-x-2 font-medium text-text"
+            disabled={loading}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M2 8H14M7 3L2 8L7 13"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>もう一度変換</span>
+          </button>
+
+          <button
+            onClick={copyResult}
+            className="w-full py-3 px-4 rounded-md bg-gradient-to-r from-gradient-from to-gradient-to text-white flex items-center justify-center space-x-2 font-medium"
+            disabled={loading}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M8 3V13M3 8H13"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>新しく入力する</span>
+          </button>
         </div>
       </main>
     </div>
