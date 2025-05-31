@@ -11,6 +11,7 @@ import {
   getPostById,
   type Reaction,
 } from "@/utils/posts";
+import { supabase } from "@/utils/supabase";
 
 export default function ResultPage() {
   const searchParams = useSearchParams();
@@ -23,9 +24,39 @@ export default function ResultPage() {
   const [postId, setPostId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [apiLimit, setApiLimit] = useState<{
+    remainingCalls: number;
+    maxDailyLimit: number;
+  }>({ remainingCalls: 5, maxDailyLimit: 5 });
+  const [token, setToken] = useState<string | null>(null);
 
   // 投稿が保存されたかどうかを追跡するref
   const hasSavedRef = useRef(false);
+
+  // API使用状況を取得する関数
+  const fetchApiUsage = async (authToken: string) => {
+    try {
+      const response = await fetch("/api/usage", {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("API使用状況の取得に失敗しました");
+      }
+
+      const data = await response.json();
+      if (data.success && data.limit) {
+        setApiLimit({
+          remainingCalls: data.limit.remainingCalls,
+          maxDailyLimit: data.limit.maxDailyLimit,
+        });
+      }
+    } catch (error) {
+      console.error("API使用状況の取得エラー:", error);
+    }
+  };
 
   useEffect(() => {
     if (!searchParams) return;
@@ -43,6 +74,19 @@ export default function ResultPage() {
     }
 
     const fetchData = async () => {
+      // 認証情報とAPI使用状況を取得
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          setToken(session.access_token);
+          await fetchApiUsage(session.access_token);
+        }
+      } catch (error) {
+        console.error("認証情報の取得に失敗しました:", error);
+      }
+
       // IDがある場合は既に保存済みの投稿を取得
       if (id) {
         setPostId(id);
@@ -88,6 +132,18 @@ export default function ResultPage() {
           setSaving(true);
 
           try {
+            // 認証トークンを使用して投稿を保存
+            if (!token) {
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+              if (session?.access_token) {
+                setToken(session.access_token);
+              } else {
+                throw new Error("認証情報が見つかりません");
+              }
+            }
+
             const newPost = await savePost({
               content: input,
               result: resultParam,
@@ -214,16 +270,31 @@ export default function ResultPage() {
   };
 
   const convertAgain = () => {
+    // APIの使用制限をチェック
+    if (apiLimit.remainingCalls <= 0) {
+      alert("本日の変換回数制限に達しました。明日またお試しください。");
+      return;
+    }
+
     // 新しい結果を取得するために、結果パラメータなしでAPIを再度呼び出す
     setLoading(true);
     hasSavedRef.current = false; // 保存フラグをリセット
 
     const fetchNewResult = async () => {
       try {
+        // 認証トークンを取得
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error("認証情報が見つかりません。再ログインしてください。");
+        }
+
         const response = await fetch("/api/convert", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             text: inputText,
@@ -232,7 +303,18 @@ export default function ResultPage() {
         });
 
         if (!response.ok) {
-          throw new Error("変換に失敗しました");
+          const errorData = await response.json();
+
+          // API制限エラーの場合は特別なメッセージを表示
+          if (response.status === 429) {
+            alert(
+              "本日のAPI使用回数の上限に達しました。明日またお試しください。"
+            );
+            setLoading(false);
+            return;
+          }
+
+          throw new Error(errorData.error || "変換に失敗しました");
         }
 
         const data = await response.json();
@@ -262,6 +344,14 @@ export default function ResultPage() {
             params.set("category_id", categoryId);
           }
           router.replace(`/result?${params.toString()}`);
+
+          // API使用制限情報を更新
+          if (data.limit) {
+            setApiLimit({
+              remainingCalls: data.limit.remainingCalls,
+              maxDailyLimit: data.limit.maxDailyLimit,
+            });
+          }
         } catch (error) {
           console.error("投稿の保存に失敗しました:", error);
         } finally {
@@ -269,6 +359,11 @@ export default function ResultPage() {
         }
       } catch (error) {
         console.error("API呼び出しエラー:", error);
+        alert(
+          error instanceof Error
+            ? error.message
+            : "変換に失敗しました。もう一度試してください。"
+        );
         setResult("変換に失敗しました。もう一度試してください。");
       } finally {
         setLoading(false);
@@ -285,7 +380,7 @@ export default function ResultPage() {
   return (
     <div style={{ backgroundColor: "#F9FAFB", minHeight: "100vh" }}>
       {/* ヘッダー */}
-      <Header showHistoryButton={false} />
+      <Header showHistoryButton={true} />
 
       {/* メインコンテンツ */}
       <main style={{ maxWidth: "448px", margin: "0 auto" }}>
@@ -678,6 +773,21 @@ export default function ResultPage() {
             ホームに戻る
           </span>
         </button>
+
+        {/* API使用状況を表示 */}
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: "13.78px",
+            color: "#6B7280",
+            marginTop: "16px",
+            lineHeight: "1.45em",
+          }}
+        >
+          {loading
+            ? "読み込み中..."
+            : `本日の変換残り回数: ${apiLimit.remainingCalls}/${apiLimit.maxDailyLimit}回`}
+        </p>
       </main>
     </div>
   );

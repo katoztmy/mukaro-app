@@ -1,14 +1,61 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { getUserApiUsage, incrementApiUsage } from "@/utils/apiLimits";
+import { createClient } from "@supabase/supabase-js";
 
 // OpenAI APIクライアントの初期化
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Supabaseクライアント初期化（サーバーサイドで使用するため）
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseServiceKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "";
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
 // テキストとスタイルを受け取り、変換結果を返すAPIエンドポイント
 export async function POST(request: Request) {
   try {
+    // 認証チェック
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "認証に失敗しました" },
+        { status: 401 }
+      );
+    }
+
+    // ユーザーのAPI使用回数をチェック
+    const { isLimitReached, remainingCalls, maxDailyLimit } =
+      await getUserApiUsage(user.id);
+
+    if (isLimitReached) {
+      return NextResponse.json(
+        {
+          error: "API使用回数の上限に達しました",
+          limit: {
+            maxDailyLimit,
+            remainingCalls: 0,
+            resetTime: "翌日0時",
+          },
+        },
+        { status: 429 }
+      );
+    }
+
     // リクエストのボディを解析
     const body = await request.json();
     const { text, style } = body;
@@ -80,6 +127,12 @@ export async function POST(request: Request) {
       presence_penalty: 0.3,
     });
 
+    // API使用回数をインクリメント
+    await incrementApiUsage(user.id);
+
+    // 残りの使用回数を取得（インクリメント後）
+    const updatedUsage = await getUserApiUsage(user.id);
+
     // APIからの応答を整形
     const result =
       completion.choices[0].message.content?.trim() || "変換に失敗しました";
@@ -90,6 +143,11 @@ export async function POST(request: Request) {
       result,
       inputText: text,
       style,
+      limit: {
+        maxDailyLimit: updatedUsage.maxDailyLimit,
+        remainingCalls: updatedUsage.remainingCalls,
+        resetTime: "翌日0時",
+      },
     });
   } catch (error) {
     console.error("変換処理中にエラーが発生しました:", error);

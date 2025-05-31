@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
+import { supabase } from "@/utils/supabase";
 
 export default function HomePage() {
   const router = useRouter();
@@ -10,10 +11,81 @@ export default function HomePage() {
   const [style, setStyle] = useState<"ogiri" | "senryu">("ogiri");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [charCount, setCharCount] = useState(0);
+  const [apiLimit, setApiLimit] = useState<{
+    remainingCalls: number;
+    maxDailyLimit: number;
+  }>({ remainingCalls: 5, maxDailyLimit: 5 });
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const MIN_CHARS = 10;
   const MAX_CHARS = 200;
   const isInputValid = charCount >= MIN_CHARS && charCount <= MAX_CHARS;
+
+  // API使用状況を取得する関数
+  const fetchApiUsage = async (authToken: string) => {
+    try {
+      const response = await fetch("/api/usage", {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("API使用状況の取得に失敗しました");
+      }
+
+      const data = await response.json();
+      if (data.success && data.limit) {
+        setApiLimit({
+          remainingCalls: data.limit.remainingCalls,
+          maxDailyLimit: data.limit.maxDailyLimit,
+        });
+      }
+    } catch (error) {
+      console.error("API使用状況の取得エラー:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ページロード時に認証情報とAPI使用状況を取得
+  useEffect(() => {
+    const getSession = async () => {
+      setIsLoading(true);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        setToken(session.access_token);
+        await fetchApiUsage(session.access_token);
+      } else {
+        setIsLoading(false);
+      }
+    };
+
+    getSession();
+
+    // ページがフォーカスされたときにAPI使用状況を再取得
+    const handleFocus = async () => {
+      if (token) {
+        await fetchApiUsage(token);
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
+
+  // トークンが変更されたときにAPI使用状況を取得
+  useEffect(() => {
+    if (token) {
+      fetchApiUsage(token);
+    }
+  }, [token]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
@@ -24,14 +96,25 @@ export default function HomePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isInputValid) return;
+    if (apiLimit.remainingCalls <= 0) {
+      alert("本日のAPI使用回数の上限に達しました。明日またお試しください。");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      // 認証トークンがない場合はエラー
+      if (!token) {
+        throw new Error("認証情報が見つかりません。再ログインしてください。");
+      }
+
       // APIを呼び出す
       const response = await fetch("/api/convert", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           text: inputText,
@@ -41,10 +124,30 @@ export default function HomePage() {
 
       if (!response.ok) {
         const errorData = await response.json();
+
+        // API制限エラーの場合は特別なメッセージを表示
+        if (response.status === 429) {
+          setApiLimit({
+            remainingCalls: 0,
+            maxDailyLimit: errorData.limit?.maxDailyLimit || 5,
+          });
+          throw new Error(
+            "本日のAPI使用回数の上限に達しました。明日またお試しください。"
+          );
+        }
+
         throw new Error(errorData.error || "変換に失敗しました");
       }
 
       const data = await response.json();
+
+      // API制限情報を更新
+      if (data.limit) {
+        setApiLimit({
+          remainingCalls: data.limit.remainingCalls,
+          maxDailyLimit: data.limit.maxDailyLimit,
+        });
+      }
 
       // 変換結果を持って結果ページに遷移（直接保存せず、保存はリザルトページで行う）
       router.push(
@@ -56,7 +159,11 @@ export default function HomePage() {
       );
     } catch (error) {
       console.error("変換エラー:", error);
-      alert("変換中にエラーが発生しました。もう一度お試しください。");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "変換中にエラーが発生しました。もう一度お試しください。"
+      );
       setIsSubmitting(false);
     }
   };
@@ -254,11 +361,18 @@ export default function HomePage() {
                 border: "none",
                 boxShadow:
                   "0px 4px 6px -4px rgba(0, 0, 0, 0.1), 0px 10px 15px -3px rgba(0, 0, 0, 0.1)",
-                opacity: !isInputValid || isSubmitting ? 0.5 : 1,
+                opacity:
+                  !isInputValid || isSubmitting || apiLimit.remainingCalls <= 0
+                    ? 0.5
+                    : 1,
                 cursor:
-                  !isInputValid || isSubmitting ? "not-allowed" : "pointer",
+                  !isInputValid || isSubmitting || apiLimit.remainingCalls <= 0
+                    ? "not-allowed"
+                    : "pointer",
               }}
-              disabled={!isInputValid || isSubmitting}
+              disabled={
+                !isInputValid || isSubmitting || apiLimit.remainingCalls <= 0
+              }
             >
               {isSubmitting ? "変換中..." : "変換！"}
             </button>
@@ -274,7 +388,9 @@ export default function HomePage() {
             lineHeight: "1.45em",
           }}
         >
-          今日の投稿: 3/10件
+          {isLoading
+            ? "読み込み中..."
+            : `本日の変換残り回数: ${apiLimit.remainingCalls}/${apiLimit.maxDailyLimit}回`}
         </p>
       </main>
     </div>

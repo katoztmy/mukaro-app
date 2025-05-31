@@ -147,25 +147,6 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
             </button>
           </div>
         )}
-
-        {!isAuthenticated && (
-          <div style={{ marginRight: "16px" }}>
-            <button
-              onClick={() => router.push("/login")}
-              style={{
-                padding: "8px 12px",
-                fontSize: "14px",
-                borderRadius: "6px",
-                border: "none",
-                background: "linear-gradient(to right, #FB923C, #EC4899)",
-                color: "white",
-                cursor: "pointer",
-              }}
-            >
-              ログイン
-            </button>
-          </div>
-        )}
       </div>
     </header>
   );

@@ -143,6 +143,36 @@ CREATE POLICY "リアクションは本人のみ削除可能" ON reactions
   FOR DELETE USING (auth.uid() = user_id);
 ```
 
+### api_usage_limits テーブル（API 使用制限）
+
+```sql
+CREATE TABLE api_usage_limits (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  usage_count INTEGER NOT NULL DEFAULT 0,
+  max_daily_limit INTEGER NOT NULL DEFAULT 5,
+  UNIQUE(user_id, date)
+);
+
+-- RLS ポリシー
+ALTER TABLE api_usage_limits ENABLE ROW LEVEL SECURITY;
+
+-- 自分の使用制限のみ閲覧可能
+CREATE POLICY "API使用制限は本人のみ閲覧可能" ON api_usage_limits
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- 自分の使用制限のみ作成可能
+CREATE POLICY "API使用制限は本人のみ作成可能" ON api_usage_limits
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 自分の使用制限のみ更新可能
+CREATE POLICY "API使用制限は本人のみ更新可能" ON api_usage_limits
+  FOR UPDATE USING (auth.uid() = user_id);
+```
+
 ## 4. 初期カテゴリデータの挿入
 
 ```sql
