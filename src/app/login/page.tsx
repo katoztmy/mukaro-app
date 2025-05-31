@@ -271,7 +271,7 @@ function LoginContent() {
 
       <main
         style={{
-          maxWidth: "400px",
+          maxWidth: "360px",
           margin: "0 auto",
           padding: "40px 16px",
         }}
@@ -310,7 +310,9 @@ function LoginContent() {
             border: "1px solid #E5E5E5",
             borderRadius: "8px",
             boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
-            padding: "24px",
+            padding: "20px",
+            maxWidth: "320px",
+            margin: "0 auto",
           }}
         >
           <h2
@@ -349,6 +351,7 @@ function LoginContent() {
                 required
                 style={{
                   width: "100%",
+                  maxWidth: "280px",
                   height: "40px",
                   padding: "8px 12px",
                   fontSize: "14px",
@@ -379,11 +382,12 @@ function LoginContent() {
               <div
                 style={{
                   position: "relative",
+                  maxWidth: "280px",
                 }}
               >
                 <input
                   id="password"
-                  type={showPassword ? "text" : "password"}
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -400,35 +404,6 @@ function LoginContent() {
                   }}
                   placeholder="••••••••"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: "absolute",
-                    right: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "0",
-                  }}
-                  aria-label={
-                    showPassword ? "パスワードを隠す" : "パスワードを表示"
-                  }
-                >
-                  <Image
-                    src={
-                      showPassword ? "/icons/eye-slash.svg" : "/icons/eye.svg"
-                    }
-                    alt={showPassword ? "パスワードを隠す" : "パスワードを表示"}
-                    width={16}
-                    height={16}
-                  />
-                </button>
               </div>
             </div>
 
