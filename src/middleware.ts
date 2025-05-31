@@ -1,4 +1,4 @@
-// 認証機能は一時的に無効化しています - デバッグ用の単純バージョン
+// 認証機能を有効化 - 安定性強化版
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -6,36 +6,96 @@ import type { NextRequest } from "next/server";
 // 認証が不要なパス
 const publicPaths = ["/login", "/signup"];
 
+// 静的リソースかどうかをチェックする関数
+const isStaticResource = (pathname: string): boolean => {
+  return (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/icons") ||
+    pathname.startsWith("/images") ||
+    pathname.includes(".") ||
+    pathname === "/favicon.ico"
+  );
+};
+
+// Supabaseのセッションクッキー名
+const SESSION_COOKIE_NAMES = [
+  "sb-session",
+  "sb:session",
+  "sb-access-token",
+  "sb-refresh-token",
+];
+
 export async function middleware(request: NextRequest) {
   // リクエストURLのパス名を取得
   const { pathname } = request.nextUrl;
 
-  console.log("ミドルウェア実行:", pathname); // デバッグログ
-
-  // 一時的に認証をバイパス - すべてのリクエストを許可
-  return NextResponse.next();
-
-  // 本来の認証コードはコメントアウト
-  /*
-  // パブリックパスの場合は認証チェックをスキップ
-  if (publicPaths.includes(pathname)) {
-    console.log("パブリックパス - 認証スキップ:", pathname);
+  // 静的リソースは常に許可
+  if (isStaticResource(pathname)) {
     return NextResponse.next();
   }
 
-  // ここに認証コードが入ります
-  */
+  // 公開パスは認証不要 - auth_redirect_completedフラグをクリア
+  if (publicPaths.includes(pathname)) {
+    const response = NextResponse.next();
+    // 公開パスへのアクセス時にリダイレクトカウンタとリダイレクト完了フラグをリセット
+    response.cookies.set("redirect_count", "0", {
+      maxAge: 60, // 1分間有効
+      path: "/",
+    });
+    // ログイン画面にアクセスしたらリダイレクト完了フラグをクリア
+    response.cookies.set("auth_redirect_completed", "", {
+      maxAge: 0, // 即時削除
+      path: "/",
+    });
+    return response;
+  }
+
+  // ユーザーが認証されているかチェック（複数のクッキー名を確認）
+  const hasSessionCookie = SESSION_COOKIE_NAMES.some(
+    (name) => !!request.cookies.get(name)
+  );
+
+  // 認証リダイレクト完了フラグがcookieにセットされているか確認
+  const authRedirectCompleted =
+    request.cookies.get("auth_redirect_completed")?.value === "true";
+
+  // リダイレクト回数を制限するためにcookieをチェック
+  const redirectCount = request.cookies.get("redirect_count")?.value;
+  const count = redirectCount ? parseInt(redirectCount) : 0;
+
+  // 認証されていない場合
+  if (!hasSessionCookie && !authRedirectCompleted) {
+    // リダイレクト回数が多すぎる場合は、一時的に認証をバイパス
+    if (count > 2) {
+      // リダイレクトカウントをリセット
+      const response = NextResponse.next();
+      response.cookies.set("redirect_count", "0", {
+        maxAge: 60, // 1分間有効
+        path: "/",
+      });
+      return response;
+    }
+
+    // 認証されていない場合はログインページにリダイレクト
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    // リダイレクトカウントを増やす
+    response.cookies.set("redirect_count", (count + 1).toString(), {
+      maxAge: 60, // 1分間有効
+      path: "/",
+    });
+    return response;
+  }
+
+  // 認証されている場合はリダイレクトカウントをリセットしてリクエストを続行
+  const response = NextResponse.next();
+  response.cookies.set("redirect_count", "0", {
+    maxAge: 60, // 1分間有効
+    path: "/",
+  });
+
+  return response;
 }
 
 export const config = {
-  matcher: [
-    /*
-     * 以下のパスを除外:
-     * - _next/static（静的ファイル）
-     * - _next/image（Next.js Image Optimization API）
-     * - favicon.ico（ブラウザが自動的にリクエストするファビコン）
-     * - public（公開ディレクトリ内のファイル）
-     */
-    "/((?!_next/static|_next/image|favicon.ico|public).*)",
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

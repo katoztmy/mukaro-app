@@ -5,9 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import Cookies from "js-cookie";
 
 export default function LoginPage() {
-  const { signIn, user, loading } = useAuth();
+  const { signIn, user, session, loading, refreshSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -15,20 +16,102 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [redirecting, setRedirecting] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
+  // ページロード時にリダイレクトフラグをクリア
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // セッションストレージのフラグをクリア
+      sessionStorage.removeItem("auth_redirect_completed");
+
+      // Cookieのフラグもクリア
+      Cookies.remove("auth_redirect_completed", { path: "/" });
+    }
+  }, []);
+
+  // リダイレクト完了フラグをセット
+  const setRedirectCompleted = () => {
+    // セッションストレージにリダイレクトフラグを設定
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("auth_redirect_completed", "true");
+    }
+
+    // クッキーにもフラグをセット
+    Cookies.set("auth_redirect_completed", "true", { expires: 1 / 24 }); // 1時間有効
+  };
+
+  // ログイン後のリダイレクト処理
+  const handleRedirectToHome = () => {
+    // 既にリダイレクト中なら何もしない
+    if (redirecting) return;
+
+    // リダイレクト状態をセット
+    setRedirecting(true);
+
+    // リダイレクト完了フラグをセット
+    setRedirectCompleted();
+
+    // セッションを再取得して確実にセッションが存在することを確認
+    refreshSession().then(() => {
+      // 画面遷移前にローディング画面を表示
+      document.body.innerHTML = `
+        <div style="
+          background-color: #F9FAFB; 
+          min-height: 100vh; 
+          display: flex; 
+          justify-content: center; 
+          align-items: center;
+          flex-direction: column;
+          font-family: sans-serif;
+        ">
+          <h2 style="color: #F97316; margin-bottom: 16px;">ムカログ</h2>
+          <p style="margin-bottom: 24px;">ログイン成功！リダイレクトしています...</p>
+          <div style="width: 40px; height: 40px; border: 4px solid #F97316; border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite;"></div>
+        </div>
+        <style>
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+      `;
+
+      // 強制的にページをリロードしてホームページに移動
+      setTimeout(() => {
+        // 確実にセッションが反映されるよう少し待機
+        window.location.href = "/";
+      }, 1500);
+    });
+  };
+
+  // 初期ロード完了のフラグを設定
+  useEffect(() => {
+    // 初回のみロード完了フラグを設定
+    if (!initialLoadComplete && !loading) {
+      setInitialLoadComplete(true);
+    }
+  }, [loading, initialLoadComplete]);
 
   // 既にログインしている場合はホームページにリダイレクト
   useEffect(() => {
-    if (!loading && user) {
-      console.log("既にログイン済み - ホームにリダイレクト");
-      router.push("/");
+    // 初期ロードが完了していない場合は何もしない
+    if (!initialLoadComplete) return;
+
+    // 既にリダイレクト処理中なら何もしない
+    if (redirecting) return;
+
+    // ユーザーとセッションが存在する場合のみリダイレクト
+    if (user && session && !redirecting) {
+      handleRedirectToHome();
     }
-  }, [user, loading, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, session, initialLoadComplete, redirecting]);
 
   // URLパラメータからエラーを取得
   useEffect(() => {
     const errorParam = searchParams.get("error");
     if (errorParam === "auth_error") {
-      console.log("認証エラーパラメータを検出");
       setError("認証に問題が発生しました。もう一度ログインしてください。");
     }
   }, [searchParams]);
@@ -37,15 +120,12 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     setError("");
-    console.log("ログイン試行:", email); // メールアドレスをログ
 
     try {
-      console.log("Supabaseログイン処理開始");
       // Supabaseを使用したログイン
       const { error: signInError, success } = await signIn(email, password);
 
       if (signInError) {
-        console.error("ログインエラー詳細:", signInError);
         // エラーメッセージの日本語化
         if (signInError.message.includes("Invalid login credentials")) {
           setError("メールアドレスまたはパスワードが正しくありません");
@@ -56,27 +136,34 @@ export default function LoginPage() {
         } else {
           setError(`ログインに失敗しました: ${signInError.message}`);
         }
-        console.error("Login error:", signInError);
         setIsLoading(false);
         return;
       }
 
       if (success) {
-        console.log("ログイン成功 - ホームページへリダイレクト");
-        // ログイン成功時はホームページにリダイレクト
-        router.push("/");
+        // エラーをクリア
+        setError("");
+        // ローディング状態を維持
+        setIsLoading(true);
+
+        // セッションを最新化
+        await refreshSession();
+
+        // ホームページにリダイレクト
+        handleRedirectToHome();
+
+        // 以降の処理が実行されないようにreturn
+        return;
       }
     } catch (error) {
-      console.error("ログイン例外発生:", error);
       setError("ログインに失敗しました。入力内容を確認してください。");
-      console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ログイン済みまたはロード中の場合はローディング表示
-  if (loading) {
+  // 実際にリダイレクト中またはフォーム送信中の場合のみローディング表示
+  if (redirecting || isLoading) {
     return (
       <div
         style={{
@@ -85,9 +172,72 @@ export default function LoginPage() {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
+          flexDirection: "column",
+          fontFamily: "sans-serif",
         }}
       >
-        <p>読み込み中...</p>
+        <h2 style={{ color: "#F97316", marginBottom: "16px" }}>ムカログ</h2>
+        <p style={{ marginBottom: "24px" }}>読み込み中...</p>
+        <div
+          style={{
+            width: "40px",
+            height: "40px",
+            border: "4px solid #F97316",
+            borderRadius: "50%",
+            borderTopColor: "transparent",
+            animation: "spin 1s linear infinite",
+          }}
+        />
+        <style jsx>{`
+          @keyframes spin {
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // 初期ロードが完了していない場合は単純なローディング表示
+  if (!initialLoadComplete) {
+    return (
+      <div
+        style={{
+          backgroundColor: "#F9FAFB",
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          flexDirection: "column",
+          fontFamily: "sans-serif",
+        }}
+      >
+        <h2 style={{ color: "#F97316", marginBottom: "16px" }}>ムカログ</h2>
+        <p style={{ marginBottom: "24px" }}>準備中...</p>
+        <div
+          style={{
+            width: "40px",
+            height: "40px",
+            border: "4px solid #F97316",
+            borderRadius: "50%",
+            borderTopColor: "transparent",
+            animation: "spin 1s linear infinite",
+          }}
+        />
+        <style jsx>{`
+          @keyframes spin {
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
+          }
+        `}</style>
       </div>
     );
   }

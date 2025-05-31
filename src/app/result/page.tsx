@@ -1,10 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Header from "@/components/layout/Header";
+import {
+  savePost,
+  updatePostReaction,
+  getPostById,
+  type Reaction,
+} from "@/utils/posts";
 
 export default function ResultPage() {
   const searchParams = useSearchParams();
@@ -14,34 +20,183 @@ export default function ResultPage() {
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(true);
   const [reaction, setReaction] = useState<"like" | "dislike" | null>(null);
+  const [postId, setPostId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+
+  // 投稿が保存されたかどうかを追跡するref
+  const hasSavedRef = useRef(false);
 
   useEffect(() => {
-    // URLパラメータから入力テキストとスタイルを取得
+    if (!searchParams) return;
+
+    // URLパラメータから入力テキスト、スタイル、結果を取得
     const input = searchParams.get("input");
     const styleParam = searchParams.get("style");
+    const resultParam = searchParams.get("result");
+    const id = searchParams.get("id");
+    const category = searchParams.get("category_id");
+    const fromHome = searchParams.get("from_home") === "true"; // ホームから来たかどうかのフラグ
 
-    if (!input) {
-      router.push("/");
-      return;
+    if (category) {
+      setCategoryId(category);
     }
 
-    setInputText(input);
-    setStyle(styleParam === "senryu" ? "senryu" : "ogiri");
+    const fetchData = async () => {
+      // IDがある場合は既に保存済みの投稿を取得
+      if (id) {
+        setPostId(id);
+        hasSavedRef.current = true; // 保存済みとしてマーク
 
-    // ここで実際のAPI呼び出しを行う予定
-    // 今はダミーの結果を表示
-    setTimeout(() => {
-      if (styleParam === "senryu") {
-        setResult("ムカつくね\n電車の隣人は\n音漏れ魔王");
-      } else {
-        setResult("急いでるのに、あなたの小銭タイムショー、素晴らしいね！");
+        try {
+          const { post, reaction } = await getPostById(id);
+          if (post) {
+            setInputText(post.content);
+            setStyle(post.style);
+            setResult(post.result);
+            if (post.category_id) {
+              setCategoryId(post.category_id);
+            }
+          }
+          if (reaction) {
+            setReaction(reaction.type);
+          }
+          setLoading(false);
+        } catch (error) {
+          console.error("投稿データの取得に失敗しました:", error);
+          setLoading(false);
+        }
+        return;
       }
-      setLoading(false);
-    }, 1500);
+
+      if (!input) {
+        router.push("/");
+        return;
+      }
+
+      setInputText(input);
+      setStyle(styleParam === "senryu" ? "senryu" : "ogiri");
+
+      // 結果パラメータがある場合はそれを使用
+      if (resultParam) {
+        setResult(resultParam);
+        setLoading(false);
+
+        // ホームページからの遷移の場合のみ保存処理を行う（かつまだ保存していない場合）
+        if (fromHome && !hasSavedRef.current) {
+          hasSavedRef.current = true; // 保存済みとしてマーク
+          setSaving(true);
+
+          try {
+            const newPost = await savePost({
+              content: input,
+              result: resultParam,
+              style: styleParam === "senryu" ? "senryu" : "ogiri",
+              category_id: category || undefined,
+            });
+
+            setPostId(newPost.id);
+
+            // 新しい投稿IDをURLに追加（from_homeフラグは削除）
+            if (searchParams) {
+              const params = new URLSearchParams();
+              params.set("input", input);
+              params.set("style", styleParam || "ogiri");
+              params.set("result", resultParam);
+              params.set("id", newPost.id);
+              if (category) params.set("category_id", category);
+
+              // URLを更新してホームフラグを削除
+              router.replace(`/result?${params.toString()}`);
+            }
+          } catch (error) {
+            console.error("投稿の保存に失敗しました:", error);
+          } finally {
+            setSaving(false);
+          }
+        }
+      } else {
+        // URLに結果がない場合、APIを呼び出す
+        // 注: ホームページで既にAPI呼び出しがされている場合、
+        // このルートには入らないはずです。念のためのフォールバック。
+        const fetchResult = async () => {
+          try {
+            const response = await fetch("/api/convert", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                text: input,
+                style: styleParam === "senryu" ? "senryu" : "ogiri",
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error("変換に失敗しました");
+            }
+
+            const data = await response.json();
+            setResult(data.result);
+
+            // まだ保存していない場合のみ保存
+            if (!hasSavedRef.current) {
+              hasSavedRef.current = true; // 保存済みとしてマーク
+              setSaving(true);
+
+              try {
+                const newPost = await savePost({
+                  content: input,
+                  result: data.result,
+                  style: styleParam === "senryu" ? "senryu" : "ogiri",
+                  category_id: category || undefined,
+                });
+
+                setPostId(newPost.id);
+
+                // 新しい投稿IDをURLに追加
+                if (searchParams) {
+                  const params = new URLSearchParams();
+                  params.set("input", input);
+                  params.set("style", styleParam || "ogiri");
+                  params.set("result", data.result);
+                  params.set("id", newPost.id);
+                  if (category) params.set("category_id", category);
+
+                  router.replace(`/result?${params.toString()}`);
+                }
+              } catch (error) {
+                console.error("投稿の保存に失敗しました:", error);
+              } finally {
+                setSaving(false);
+              }
+            }
+          } catch (error) {
+            console.error("API呼び出しエラー:", error);
+            setResult("変換に失敗しました。もう一度試してください。");
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        fetchResult();
+      }
+    };
+
+    fetchData();
   }, [searchParams, router]);
 
-  const handleReaction = (type: "like" | "dislike") => {
+  const handleReaction = async (type: "like" | "dislike") => {
     setReaction(type);
+
+    // 投稿IDがある場合はリアクションを保存
+    if (postId) {
+      try {
+        await updatePostReaction(postId, type);
+      } catch (error) {
+        console.error("リアクションの更新に失敗しました:", error);
+      }
+    }
   };
 
   const shareOnTwitter = () => {
@@ -59,7 +214,68 @@ export default function ResultPage() {
   };
 
   const convertAgain = () => {
-    router.back();
+    // 新しい結果を取得するために、結果パラメータなしでAPIを再度呼び出す
+    setLoading(true);
+    hasSavedRef.current = false; // 保存フラグをリセット
+
+    const fetchNewResult = async () => {
+      try {
+        const response = await fetch("/api/convert", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: inputText,
+            style: style,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("変換に失敗しました");
+        }
+
+        const data = await response.json();
+        setResult(data.result);
+
+        // 新しい投稿を保存
+        setSaving(true);
+        hasSavedRef.current = true; // 保存済みとしてマーク
+
+        try {
+          const newPost = await savePost({
+            content: inputText,
+            result: data.result,
+            style: style,
+            category_id: categoryId || undefined,
+          });
+
+          setPostId(newPost.id);
+
+          // 新しい投稿IDをURLに追加
+          const params = new URLSearchParams();
+          params.set("input", inputText);
+          params.set("style", style);
+          params.set("result", data.result);
+          params.set("id", newPost.id);
+          if (categoryId) {
+            params.set("category_id", categoryId);
+          }
+          router.replace(`/result?${params.toString()}`);
+        } catch (error) {
+          console.error("投稿の保存に失敗しました:", error);
+        } finally {
+          setSaving(false);
+        }
+      } catch (error) {
+        console.error("API呼び出しエラー:", error);
+        setResult("変換に失敗しました。もう一度試してください。");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNewResult();
   };
 
   const newInput = () => {
@@ -459,7 +675,7 @@ export default function ResultPage() {
               lineHeight: "1.43em",
             }}
           >
-            新しく入力する
+            ホームに戻る
           </span>
         </button>
       </main>

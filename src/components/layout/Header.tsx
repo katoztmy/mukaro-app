@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Image from "next/image";
+import Link from "next/link";
 
 type HeaderProps = {
   showHistoryButton?: boolean;
@@ -11,7 +12,18 @@ type HeaderProps = {
 
 export default function Header({ showHistoryButton = true }: HeaderProps) {
   const router = useRouter();
-  const { signOut, user } = useAuth();
+  const { signOut, user, session, refreshSession } = useAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // マウント時にセッション状態を確認
+  useEffect(() => {
+    const checkAuth = async () => {
+      await refreshSession();
+      setIsAuthenticated(!!user && !!session);
+    };
+
+    checkAuth();
+  }, [user, session, refreshSession]);
 
   const goToHistory = () => {
     router.push("/history");
@@ -19,8 +31,18 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
 
   const handleLogout = async () => {
     try {
+      // クッキーとセッションストレージをクリア
+      document.cookie.split(";").forEach(function (c) {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("auth_redirect_completed");
+      }
+
       await signOut();
-      console.log("ログアウト成功");
       router.push("/login");
     } catch (error) {
       console.error("ログアウトエラー:", error);
@@ -44,20 +66,28 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
           alignItems: "center",
         }}
       >
-        <h1
+        <Link
+          href="/"
           style={{
+            textDecoration: "none",
             marginLeft: "16px",
-            fontSize: "20px",
-            fontWeight: 700,
-            color: "#F97316",
-            lineHeight: "1.4em",
+            cursor: "pointer",
           }}
         >
-          ムカログ
-        </h1>
+          <h1
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              color: "#F97316",
+              lineHeight: "1.4em",
+            }}
+          >
+            ムカログ
+          </h1>
+        </Link>
         <div style={{ flex: 1 }}></div>
 
-        {user && (
+        {isAuthenticated && (
           <div
             style={{
               display: "flex",
@@ -83,19 +113,12 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
                 aria-label="履歴"
                 title="履歴"
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M2 2C12.0002 2 12.0002 2 12.0002 2M12.0002 2C12.0002 2 12.0002 2 12.0002 12M12.0002 2L2 12"
-                    stroke="#0A0A0A"
-                    strokeWidth="1.33333"
-                  />
-                </svg>
+                <Image
+                  src="/icons/history-clock-icon.svg"
+                  alt="履歴"
+                  width={20}
+                  height={20}
+                />
               </button>
             )}
 
@@ -121,6 +144,25 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
                 width={20}
                 height={20}
               />
+            </button>
+          </div>
+        )}
+
+        {!isAuthenticated && (
+          <div style={{ marginRight: "16px" }}>
+            <button
+              onClick={() => router.push("/login")}
+              style={{
+                padding: "8px 12px",
+                fontSize: "14px",
+                borderRadius: "6px",
+                border: "none",
+                background: "linear-gradient(to right, #FB923C, #EC4899)",
+                color: "white",
+                cursor: "pointer",
+              }}
+            >
+              ログイン
             </button>
           </div>
         )}

@@ -27,13 +27,36 @@ export default function HomePage() {
     setIsSubmitting(true);
 
     try {
+      // APIを呼び出す
+      const response = await fetch("/api/convert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: inputText,
+          style: style,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "変換に失敗しました");
+      }
+
+      const data = await response.json();
+
+      // 変換結果を持って結果ページに遷移（直接保存せず、保存はリザルトページで行う）
       router.push(
-        `/result?input=${encodeURIComponent(inputText)}&style=${style}`
+        `/result?input=${encodeURIComponent(
+          inputText
+        )}&style=${style}&result=${encodeURIComponent(
+          data.result
+        )}&from_home=true`
       );
     } catch (error) {
       console.error("変換エラー:", error);
       alert("変換中にエラーが発生しました。もう一度お試しください。");
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -102,8 +125,7 @@ export default function HomePage() {
                     resize: "none",
                     outline: "none",
                   }}
-                  placeholder="例：電車で隣に座った人が、ずっとスマホで
-動画を大音量で見ている..."
+                  placeholder="例：電車で隣に座った人が、ずっとスマホで動画を大音量で見ている…"
                   value={inputText}
                   onChange={handleInputChange}
                   required

@@ -34,6 +34,7 @@ type AuthContextType = {
     error: Error | null;
     success: boolean;
   }>;
+  refreshSession: () => Promise<void>;
 };
 
 // デフォルト値を持つ認証コンテキストの作成
@@ -45,6 +46,7 @@ const AuthContext = createContext<AuthContextType>({
   signIn: async () => ({ error: null, success: false }),
   signOut: async () => {},
   resetPassword: async () => ({ error: null, success: false }),
+  refreshSession: async () => {},
 });
 
 // 認証プロバイダーの型定義
@@ -58,20 +60,53 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // 現在のセッションを取得
-    const setData = async () => {
+  // セッション更新関数
+  const refreshSession = async () => {
+    try {
       const {
         data: { session },
         error,
       } = await supabase.auth.getSession();
+
       if (error) {
-        console.error("セッション取得エラー:", error.message);
+        throw error;
       }
 
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      if (session) {
+        setSession(session);
+        setUser(session.user);
+      }
+    } catch (error) {
+      console.error("セッション更新エラー:", error);
+    }
+  };
+
+  useEffect(() => {
+    // 現在のセッションを取得
+    const setData = async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error("セッション取得エラー:", error.message);
+        }
+
+        if (session) {
+          // セッションがある場合のみセット
+          setSession(session);
+          setUser(session.user);
+        } else {
+          // セッションがない場合は明示的にnullをセット
+          setSession(null);
+          setUser(null);
+        }
+      } finally {
+        // 処理完了後、ローディング状態を終了
+        setLoading(false);
+      }
     };
 
     // 初期セッション取得を実行
@@ -81,8 +116,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      if (session) {
+        setSession(session);
+        setUser(session.user);
+      } else {
+        setSession(null);
+        setUser(null);
+      }
       setLoading(false);
     });
 
@@ -104,6 +144,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { error, success: false };
       }
 
+      // サインアップ成功後にセッションを更新
+      await refreshSession();
+
       return { error: null, success: true };
     } catch (error) {
       return { error: error as Error, success: false };
@@ -123,14 +166,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       // 認証成功時はセッションとユーザー情報を更新
-      setSession(data.session);
-      setUser(data.user);
+      if (data.session) {
+        setSession(data.session);
+        setUser(data.user);
 
-      console.log("ログイン成功:", data.session); // デバッグ用
+        // セッションがちゃんと設定されたことを確認するための遅延処理
+        setTimeout(async () => {
+          await refreshSession();
+        }, 500);
+      }
 
       return { error: null, success: true };
     } catch (error) {
-      console.error("ログインエラー:", error); // デバッグ用
+      console.error("ログインエラー:", error);
       return { error: error as Error, success: false };
     }
   };
@@ -138,6 +186,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // サインアウト機能
   const signOut = async () => {
     await supabase.auth.signOut();
+    // サインアウト後は明示的にnullをセット
+    setSession(null);
+    setUser(null);
   };
 
   // パスワードリセット機能
@@ -166,6 +217,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signIn,
     signOut,
     resetPassword,
+    refreshSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -5,48 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Header from "@/components/layout/Header";
-
-// 仮のデータ型定義
-type Post = {
-  id: string;
-  content: string;
-  result: string;
-  style: "ogiri" | "senryu";
-  category?: string;
-  reaction: "like" | "dislike" | null;
-  createdAt: string;
-};
-
-// 仮のデータ
-const MOCK_POSTS: Post[] = [
-  {
-    id: "1",
-    content: "電車で隣に座った人が、ずっとスマホで動画を大音量で見ている",
-    result: "電車内で 音漏れ垂れ流す 無神経",
-    style: "senryu",
-    category: "交通・通勤",
-    reaction: "like",
-    createdAt: "2023-12-01T15:30:00.000Z",
-  },
-  {
-    id: "2",
-    content: "コンビニのレジで小銭を数えるのに時間かかってる人がいて待たされた",
-    result: "急いでるのに、あなたの小銭タイムショー、素晴らしいね！",
-    style: "ogiri",
-    category: "買い物・消費",
-    reaction: "dislike",
-    createdAt: "2023-12-01T10:15:00.000Z",
-  },
-  {
-    id: "3",
-    content: "会議で的外れな質問ばかりする人がいて時間が無駄になった",
-    result: "会議室 質問という名の 時間泥棒",
-    style: "senryu",
-    category: "人間関係・職場",
-    reaction: "like",
-    createdAt: "2023-11-30T14:20:00.000Z",
-  },
-];
+import { getPosts, getLikedPostsCount, type Post } from "@/utils/posts";
 
 // 日付をフォーマットする関数
 const formatDate = (dateString: string) => {
@@ -59,7 +18,7 @@ const groupPostsByDate = (posts: Post[]) => {
   const grouped: { [key: string]: Post[] } = {};
 
   posts.forEach((post) => {
-    const dateKey = formatDate(post.createdAt);
+    const dateKey = formatDate(post.created_at);
     if (!grouped[dateKey]) {
       grouped[dateKey] = [];
     }
@@ -74,14 +33,30 @@ export default function HistoryPage() {
   const [groupedPosts, setGroupedPosts] = useState<[string, Post[]][]>([]);
   const [totalPosts, setTotalPosts] = useState(0);
   const [likedPosts, setLikedPosts] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 実際のアプリではAPIから履歴データを取得
-    // ここではモックデータを使用
-    const grouped = groupPostsByDate(MOCK_POSTS);
-    setGroupedPosts(grouped);
-    setTotalPosts(MOCK_POSTS.length);
-    setLikedPosts(MOCK_POSTS.filter((post) => post.reaction === "like").length);
+    // 実際のデータをSupabaseから取得
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [posts, likedCount] = await Promise.all([
+          getPosts(),
+          getLikedPostsCount(),
+        ]);
+
+        const grouped = groupPostsByDate(posts);
+        setGroupedPosts(grouped);
+        setTotalPosts(posts.length);
+        setLikedPosts(likedCount);
+      } catch (error) {
+        console.error("投稿の取得に失敗しました:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   return (
@@ -175,7 +150,38 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        {groupedPosts.length > 0 ? (
+        {loading ? (
+          // ローディング表示
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "200px",
+            }}
+          >
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                border: "4px solid #F97316",
+                borderRadius: "50%",
+                borderTopColor: "transparent",
+                animation: "spin 1s linear infinite",
+              }}
+            ></div>
+            <style jsx>{`
+              @keyframes spin {
+                0% {
+                  transform: rotate(0deg);
+                }
+                100% {
+                  transform: rotate(360deg);
+                }
+              }
+            `}</style>
+          </div>
+        ) : groupedPosts.length > 0 ? (
           <>
             {groupedPosts.map(([date, posts], index) => (
               <div key={date} style={{ marginTop: "26px" }}>
@@ -219,7 +225,19 @@ export default function HistoryPage() {
                       padding: "17px",
                       cursor: "pointer",
                     }}
-                    onClick={() => router.push(`/result?id=${post.id}`)}
+                    onClick={() =>
+                      router.push(
+                        `/result?id=${post.id}&input=${encodeURIComponent(
+                          post.content
+                        )}&style=${post.style}&result=${encodeURIComponent(
+                          post.result
+                        )}${
+                          post.category_id
+                            ? `&category_id=${post.category_id}`
+                            : ""
+                        }`
+                      )
+                    }
                   >
                     <div
                       style={{
@@ -252,23 +270,13 @@ export default function HistoryPage() {
                           {post.style === "ogiri" ? "大喜利" : "川柳"}
                         </span>
                       </div>
-                      {post.category && (
+                      {/* カテゴリ表示（あれば） */}
+                      {post.categories && (
                         <div
                           style={{
                             display: "inline-block",
-                            backgroundColor:
-                              post.category === "交通・通勤"
-                                ? "#EFF6FF"
-                                : post.category === "買い物・消費"
-                                ? "#FFF7ED"
-                                : "#FAF5FF",
-                            border: `1px solid ${
-                              post.category === "交通・通勤"
-                                ? "#BFDBFE"
-                                : post.category === "買い物・消費"
-                                ? "#FED7AA"
-                                : "#E9D5FF"
-                            }`,
+                            backgroundColor: post.categories.color || "#F3F4F6",
+                            border: "1px solid #E5E7EB",
                             borderRadius: "9999px",
                             padding: "4px 11px",
                           }}
@@ -277,16 +285,11 @@ export default function HistoryPage() {
                             style={{
                               fontSize: "12px",
                               fontWeight: 600,
-                              color:
-                                post.category === "交通・通勤"
-                                  ? "#2563EB"
-                                  : post.category === "買い物・消費"
-                                  ? "#EA580C"
-                                  : "#9333EA",
+                              color: "#374151",
                               lineHeight: "1.33em",
                             }}
                           >
-                            {post.category}
+                            {post.categories.name}
                           </span>
                         </div>
                       )}
@@ -299,9 +302,9 @@ export default function HistoryPage() {
                             lineHeight: "1.4em",
                           }}
                         >
-                          {new Date(post.createdAt).getHours()}:
+                          {new Date(post.created_at).getHours()}:
                           {String(
-                            new Date(post.createdAt).getMinutes()
+                            new Date(post.created_at).getMinutes()
                           ).padStart(2, "0")}
                         </span>
                       </div>
@@ -329,62 +332,11 @@ export default function HistoryPage() {
                     >
                       {post.result}
                     </p>
-                    <div style={{ display: "flex", alignItems: "center" }}>
-                      <Image
-                        src={`/icons/${
-                          post.reaction === "like"
-                            ? "thumbs-up-history"
-                            : "thumbs-down-history"
-                        }.svg`}
-                        alt={post.reaction === "like" ? "スッキリ" : "うーん"}
-                        width={16}
-                        height={16}
-                        style={{ marginRight: "4px" }}
-                      />
-                      <span
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: 400,
-                          color:
-                            post.reaction === "like" ? "#22C55E" : "#EC4899",
-                          lineHeight: "1.33em",
-                        }}
-                      >
-                        {post.reaction === "like" ? "スッキリ" : "うーん"}
-                      </span>
-                    </div>
+                    {/* リアクション表示は別途実装できますが、今回は省略 */}
                   </div>
                 ))}
               </div>
             ))}
-
-            {/* さらに読み込むボタン */}
-            <button
-              style={{
-                width: "100%",
-                height: "40px",
-                marginTop: "32px",
-                marginBottom: "40px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "1px solid #E5E5E5",
-                borderRadius: "6px",
-                backgroundColor: "#FFFFFF",
-                cursor: "pointer",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 500,
-                  color: "#0A0A0A",
-                  lineHeight: "1.43em",
-                }}
-              >
-                さらに読み込む
-              </span>
-            </button>
           </>
         ) : (
           <div
