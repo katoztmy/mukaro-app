@@ -53,13 +53,17 @@ export default function HomePage() {
   useEffect(() => {
     const getSession = async () => {
       setIsLoading(true);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        setToken(session.access_token);
-        await fetchApiUsage(session.access_token);
-      } else {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          setToken(session.access_token);
+          await fetchApiUsage(session.access_token);
+        }
+      } catch (error) {
+        console.error("セッション取得エラー:", error);
+      } finally {
         setIsLoading(false);
       }
     };
@@ -68,8 +72,15 @@ export default function HomePage() {
 
     // ページがフォーカスされたときにAPI使用状況を再取得
     const handleFocus = async () => {
-      if (token) {
-        await fetchApiUsage(token);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          await fetchApiUsage(session.access_token);
+        }
+      } catch (error) {
+        console.error("API使用状況の取得エラー:", error);
       }
     };
 
@@ -79,13 +90,6 @@ export default function HomePage() {
       window.removeEventListener("focus", handleFocus);
     };
   }, []);
-
-  // トークンが変更されたときにAPI使用状況を取得
-  useEffect(() => {
-    if (token) {
-      fetchApiUsage(token);
-    }
-  }, [token]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
@@ -166,10 +170,6 @@ export default function HomePage() {
       );
       setIsSubmitting(false);
     }
-  };
-
-  const goToHistory = () => {
-    router.push("/history");
   };
 
   return (

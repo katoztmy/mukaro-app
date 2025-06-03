@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useRef, Suspense } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  Suspense,
+  useCallback,
+} from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -28,16 +34,29 @@ function ResultContent({
 }) {
   const searchParams = useSearchParams();
 
+  // searchParamsが変更されたときだけ実行されるように
+  // useEffectの前にref変数で前回のパラメータを記録
+  const prevSearchParamsRef = useRef<URLSearchParams | null>(null);
+
   useEffect(() => {
     if (!searchParams) return;
 
+    // 前回と同じsearchParamsの場合は処理をスキップ（無限ループ防止）
+    const searchParamsString = searchParams.toString();
+    if (prevSearchParamsRef.current?.toString() === searchParamsString) {
+      return;
+    }
+
+    // 現在のsearchParamsを記録
+    prevSearchParamsRef.current = searchParams;
+
     // URLパラメータから入力テキスト、スタイル、結果を取得
-    const input = searchParams?.get("input");
-    const styleParam = searchParams?.get("style");
-    const resultParam = searchParams?.get("result");
-    const id = searchParams?.get("id");
-    const category = searchParams?.get("category_id");
-    const fromHome = searchParams?.get("from_home") === "true"; // ホームから来たかどうかのフラグ
+    const input = searchParams.get("input");
+    const styleParam = searchParams.get("style");
+    const resultParam = searchParams.get("result");
+    const id = searchParams.get("id");
+    const category = searchParams.get("category_id");
+    const fromHome = searchParams.get("from_home") === "true"; // ホームから来たかどうかのフラグ
 
     onParamsLoaded({
       input,
@@ -79,6 +98,17 @@ export default function ResultPage() {
   // 投稿が保存されたかどうかを追跡するref
   const hasSavedRef = useRef(false);
 
+  // パラメータが既に読み込まれたかを追跡するRef
+  const paramsLoadedRef = useRef(false);
+
+  // 現在のurlParamsを追跡するRef
+  const urlParamsRef = useRef(urlParams);
+
+  // urlParamsが変更されたら参照を更新
+  useEffect(() => {
+    urlParamsRef.current = urlParams;
+  }, [urlParams]);
+
   // API使用状況を取得する関数
   const fetchApiUsage = async (authToken: string) => {
     try {
@@ -105,29 +135,32 @@ export default function ResultPage() {
   };
 
   // URLパラメータが読み込まれたときの処理
-  const handleParamsLoaded = (params: {
-    input: string | null;
-    styleParam: string | null;
-    resultParam: string | null;
-    id: string | null;
-    category: string | null;
-    fromHome: boolean;
-  }) => {
-    setUrlParams(params);
-  };
+  const handleParamsLoaded = useCallback(
+    (params: {
+      input: string | null;
+      styleParam: string | null;
+      resultParam: string | null;
+      id: string | null;
+      category: string | null;
+      fromHome: boolean;
+    }) => {
+      // 既に同じパラメータでロードされていれば処理しない
+      if (paramsLoadedRef.current) {
+        // 最新のurlParamsをRefから取得して比較
+        const isSameParams =
+          JSON.stringify(params) === JSON.stringify(urlParamsRef.current);
+        if (isSameParams) return;
+      }
 
+      paramsLoadedRef.current = true;
+      setUrlParams(params);
+    },
+    []
+  ); // 依存配列を空にして、useCallbackが再生成されないようにする
+
+  // API使用状況を取得するためのuseEffect
   useEffect(() => {
-    if (!urlParams) return;
-
-    const { input, styleParam, resultParam, id, category, fromHome } =
-      urlParams;
-
-    if (category) {
-      setCategoryId(category);
-    }
-
-    const fetchData = async () => {
-      // 認証情報とAPI使用状況を取得
+    const getApiUsage = async () => {
       try {
         const {
           data: { session },
@@ -139,7 +172,23 @@ export default function ResultPage() {
       } catch (error) {
         console.error("認証情報の取得に失敗しました:", error);
       }
+    };
 
+    getApiUsage();
+  }, []);
+
+  // URLパラメータに基づいてデータを取得・設定するuseEffect
+  useEffect(() => {
+    if (!urlParams) return;
+
+    const { input, styleParam, resultParam, id, category, fromHome } =
+      urlParams;
+
+    if (category) {
+      setCategoryId(category);
+    }
+
+    const fetchData = async () => {
       // IDがある場合は既に保存済みの投稿を取得
       if (id) {
         setPostId(id);
@@ -186,15 +235,9 @@ export default function ResultPage() {
 
           try {
             // 認証トークンを使用して投稿を保存
-            if (!token) {
-              const {
-                data: { session },
-              } = await supabase.auth.getSession();
-              if (session?.access_token) {
-                setToken(session.access_token);
-              } else {
-                throw new Error("認証情報が見つかりません");
-              }
+            const currentToken = token || (await getAuthToken());
+            if (!currentToken) {
+              throw new Error("認証情報が見つかりません");
             }
 
             const newPost = await savePost({
@@ -228,10 +271,15 @@ export default function ResultPage() {
         // このルートには入らないはずです。念のためのフォールバック。
         const fetchResult = async () => {
           try {
+            const currentToken = token || (await getAuthToken());
+
             const response = await fetch("/api/convert", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
+                ...(currentToken && {
+                  Authorization: `Bearer ${currentToken}`,
+                }),
               },
               body: JSON.stringify({
                 text: input,
@@ -289,7 +337,7 @@ export default function ResultPage() {
     };
 
     fetchData();
-  }, [urlParams, router, token]);
+  }, [urlParams, router]);
 
   const handleReaction = async (type: "like" | "dislike") => {
     setReaction(type);
@@ -332,10 +380,8 @@ export default function ResultPage() {
     const fetchNewResult = async () => {
       try {
         // 認証トークンを取得
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session?.access_token) {
+        const currentToken = token || (await getAuthToken());
+        if (!currentToken) {
           throw new Error("認証情報が見つかりません。再ログインしてください。");
         }
 
@@ -343,7 +389,7 @@ export default function ResultPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${currentToken}`,
           },
           body: JSON.stringify({
             text: inputText,
@@ -400,6 +446,9 @@ export default function ResultPage() {
               remainingCalls: data.limit.remainingCalls,
               maxDailyLimit: data.limit.maxDailyLimit,
             });
+          } else {
+            // data.limitがない場合は手動で更新
+            await fetchApiUsage(currentToken);
           }
         } catch (error) {
           console.error("投稿の保存に失敗しました:", error);
@@ -424,6 +473,18 @@ export default function ResultPage() {
 
   const newInput = () => {
     router.push("/");
+  };
+
+  // 認証トークンを取得するためのヘルパー関数
+  const getAuthToken = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      setToken(session.access_token);
+      return session.access_token;
+    }
+    return null;
   };
 
   return (

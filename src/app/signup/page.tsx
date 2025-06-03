@@ -11,7 +11,6 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -50,12 +49,6 @@ export default function SignupPage() {
 
     if (password !== confirmPassword) {
       setError("パスワードが一致しません");
-      setIsLoading(false);
-      return;
-    }
-
-    if (!agreeTerms) {
-      setError("利用規約とプライバシーポリシーに同意してください");
       setIsLoading(false);
       return;
     }
@@ -366,90 +359,9 @@ export default function SignupPage() {
             </div>
           </div>
 
-          <div style={{ marginBottom: "20px" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                position: "relative",
-                lineHeight: "1.43em",
-              }}
-            >
-              <input
-                id="terms"
-                type="checkbox"
-                checked={agreeTerms}
-                onChange={(e) => setAgreeTerms(e.target.checked)}
-                style={{
-                  width: "16px",
-                  height: "16px",
-                  marginRight: "8px",
-                  marginTop: "4px",
-                  appearance: "none",
-                  border: "1px solid #D1D5DB",
-                  borderRadius: "4px",
-                  backgroundColor: agreeTerms ? "#F97316" : "#FFFFFF",
-                  position: "relative",
-                  cursor: "pointer",
-                }}
-              />
-              {agreeTerms && (
-                <span
-                  style={{
-                    position: "absolute",
-                    left: "4px",
-                    top: "4px",
-                    width: "8px",
-                    height: "8px",
-                    pointerEvents: "none",
-                  }}
-                >
-                  <Image
-                    src="/icons/check-icon.svg"
-                    alt="チェック"
-                    width={8}
-                    height={8}
-                  />
-                </span>
-              )}
-              <label
-                htmlFor="terms"
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 400,
-                  color: "#4B5563",
-                  cursor: "pointer",
-                }}
-              >
-                <span>
-                  <Link
-                    href="/terms"
-                    style={{
-                      color: "#F97316",
-                      textDecoration: "none",
-                    }}
-                  >
-                    利用規約
-                  </Link>
-                  と
-                  <Link
-                    href="/privacy"
-                    style={{
-                      color: "#F97316",
-                      textDecoration: "none",
-                    }}
-                  >
-                    プライバシーポリシー
-                  </Link>
-                  に同意します
-                </span>
-              </label>
-            </div>
-          </div>
-
           <button
             type="submit"
-            disabled={isLoading || !agreeTerms}
+            disabled={isLoading}
             style={{
               width: "100%",
               height: "40px",
@@ -460,8 +372,8 @@ export default function SignupPage() {
               fontSize: "14px",
               fontWeight: 500,
               lineHeight: "1.43em",
-              cursor: isLoading || !agreeTerms ? "default" : "pointer",
-              opacity: isLoading || !agreeTerms ? 0.5 : 1,
+              cursor: isLoading ? "default" : "pointer",
+              opacity: isLoading ? 0.5 : 1,
               marginBottom: "0",
             }}
           >
