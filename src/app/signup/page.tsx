@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function SignupPage() {
   const { signUp, user, loading } = useAuth();
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +38,24 @@ export default function SignupPage() {
       return;
     }
 
+    if (!username.trim()) {
+      setError("ユーザー名を入力してください");
+      setIsLoading(false);
+      return;
+    }
+
+    if (username.length < 3) {
+      setError("ユーザー名は3文字以上で入力してください");
+      setIsLoading(false);
+      return;
+    }
+
+    if (username.length > 10) {
+      setError("ユーザー名は10文字以内で入力してください");
+      setIsLoading(false);
+      return;
+    }
+
     if (
       password.length < 8 ||
       !/[0-9]/.test(password) ||
@@ -55,7 +74,11 @@ export default function SignupPage() {
 
     try {
       // Supabaseを使用したサインアップ
-      const { error: signUpError, success } = await signUp(email, password);
+      const { error: signUpError, success } = await signUp(
+        email,
+        password,
+        username
+      );
 
       if (signUpError) {
         // エラーメッセージの日本語化
@@ -199,6 +222,53 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@example.com"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  border: "none",
+                  borderRadius: "6px",
+                  padding: "0 13px",
+                  fontSize: "13.34px",
+                  color: "#737373",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+                required
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: "20px" }}>
+            <label
+              htmlFor="username"
+              style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: 500,
+                color: "#0A0A0A",
+                marginBottom: "12px",
+              }}
+            >
+              ユーザー名
+            </label>
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                height: "40px",
+                border: "1px solid #E5E5E5",
+                borderRadius: "6px",
+                backgroundColor: "#FFFFFF",
+                boxSizing: "border-box",
+              }}
+            >
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="3〜10文字のユーザー名"
+                maxLength={10}
                 style={{
                   width: "100%",
                   height: "100%",

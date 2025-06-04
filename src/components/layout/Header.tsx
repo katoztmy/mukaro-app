@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Image from "next/image";
 import Link from "next/link";
+import { getProfile } from "@/utils/database";
 
 type HeaderProps = {
   showHistoryButton?: boolean;
@@ -14,12 +15,20 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
   const router = useRouter();
   const { signOut, user, session, refreshSession } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
 
   // マウント時にセッション状態を確認
   useEffect(() => {
     const checkAuth = async () => {
       await refreshSession();
       setIsAuthenticated(!!user && !!session);
+
+      if (user) {
+        const profile = await getProfile(user.id);
+        if (profile && profile.full_name) {
+          setUserName(profile.full_name);
+        }
+      }
     };
 
     checkAuth();
@@ -27,6 +36,10 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
 
   const goToHistory = () => {
     router.push("/history");
+  };
+
+  const goToUserProfile = () => {
+    router.push("/profile");
   };
 
   const handleLogout = async () => {
@@ -96,6 +109,30 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
               marginRight: "16px",
             }}
           >
+            {userName && (
+              <button
+                onClick={goToUserProfile}
+                style={{
+                  height: "36px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "6px",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  padding: "0 8px",
+                  color: "#4B5563",
+                  fontWeight: 500,
+                  fontSize: "14px",
+                }}
+                aria-label="プロフィール"
+                title="プロフィール"
+              >
+                {userName}
+              </button>
+            )}
+
             {showHistoryButton && (
               <button
                 onClick={goToHistory}

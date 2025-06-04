@@ -17,7 +17,8 @@ type AuthContextType = {
   loading: boolean;
   signUp: (
     email: string,
-    password: string
+    password: string,
+    username: string
   ) => Promise<{
     error: Error | null;
     success: boolean;
@@ -157,11 +158,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   // サインアップ機能
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, username: string) => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            username: username,
+          },
+        },
       });
 
       if (error) {
