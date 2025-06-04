@@ -5,7 +5,43 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Header from "@/components/layout/Header";
-import { getPosts, getLikedPostsCount, type Post } from "@/utils/posts";
+import {
+  getPosts,
+  getLikedPostsCount,
+  type Post,
+  ConvertStyle,
+} from "@/utils/posts";
+
+// スタイルの表示名マッピング
+const styleDisplayNames: Record<ConvertStyle, string> = {
+  ogiri: "大喜利",
+  senryu: "川柳",
+  manabi: "学び",
+  total_affirmation: "全肯定",
+  hissatsu_waza: "必殺技",
+  news_bulletin: "ニュース速報",
+  ijin: "偉人",
+  chuunibyou: "厨二病",
+  high_consciousness: "意識高い系",
+  epic_tale: "壮大な物語",
+};
+
+// スタイルごとの色の設定
+const styleColors: Record<
+  ConvertStyle,
+  { bg: string; border: string; text: string }
+> = {
+  ogiri: { bg: "#FFF7ED", border: "#FED7AA", text: "#EA580C" },
+  senryu: { bg: "#FDF2F8", border: "#FBCFE8", text: "#DB2777" },
+  manabi: { bg: "#ECFDF5", border: "#A7F3D0", text: "#059669" },
+  total_affirmation: { bg: "#F0F9FF", border: "#BAE6FD", text: "#0284C7" },
+  hissatsu_waza: { bg: "#EFF6FF", border: "#BFDBFE", text: "#3B82F6" },
+  news_bulletin: { bg: "#FEF2F2", border: "#FECACA", text: "#DC2626" },
+  ijin: { bg: "#F5F3FF", border: "#DDD6FE", text: "#7C3AED" },
+  chuunibyou: { bg: "#F8FAFC", border: "#CBD5E1", text: "#475569" },
+  high_consciousness: { bg: "#FEF9C3", border: "#FDE047", text: "#CA8A04" },
+  epic_tale: { bg: "#FAF5FF", border: "#E9D5FF", text: "#9333EA" },
+};
 
 // 日付をフォーマットする関数
 const formatDate = (dateString: string) => {
@@ -26,6 +62,18 @@ const groupPostsByDate = (posts: Post[]) => {
   });
 
   return Object.entries(grouped);
+};
+
+// スタイル名を取得する関数
+const getStyleName = (style: ConvertStyle): string => {
+  return styleDisplayNames[style] || style;
+};
+
+// スタイルの色情報を取得する関数
+const getStyleColor = (
+  style: ConvertStyle
+): { bg: string; border: string; text: string } => {
+  return styleColors[style] || styleColors.ogiri; // デフォルトは大喜利の色
 };
 
 export default function HistoryPage() {
@@ -249,10 +297,11 @@ export default function HistoryPage() {
                       <div
                         style={{
                           display: "inline-block",
-                          backgroundColor:
-                            post.style === "ogiri" ? "#FFF7ED" : "#FDF2F8",
+                          backgroundColor: getStyleColor(
+                            post.style as ConvertStyle
+                          ).bg,
                           border: `1px solid ${
-                            post.style === "ogiri" ? "#FED7AA" : "#FBCFE8"
+                            getStyleColor(post.style as ConvertStyle).border
                           }`,
                           borderRadius: "9999px",
                           padding: "4px 11px",
@@ -262,12 +311,12 @@ export default function HistoryPage() {
                           style={{
                             fontSize: "12px",
                             fontWeight: 600,
-                            color:
-                              post.style === "ogiri" ? "#EA580C" : "#DB2777",
+                            color: getStyleColor(post.style as ConvertStyle)
+                              .text,
                             lineHeight: "1.33em",
                           }}
                         >
-                          {post.style === "ogiri" ? "大喜利" : "川柳"}
+                          {getStyleName(post.style as ConvertStyle)}
                         </span>
                       </div>
                       {/* カテゴリ表示（あれば） */}

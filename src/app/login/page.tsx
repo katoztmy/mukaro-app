@@ -84,7 +84,6 @@ function LoginContent() {
           font-family: sans-serif;
         ">
           <h2 style="color: #F97316; margin-bottom: 16px;">ムカログ</h2>
-          <p style="margin-bottom: 24px;">ログイン成功！リダイレクトしています...</p>
           <div style="width: 40px; height: 40px; border: 4px solid #F97316; border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite;"></div>
         </div>
         <style>
@@ -192,7 +191,6 @@ function LoginContent() {
         }}
       >
         <h2 style={{ color: "#F97316", marginBottom: "16px" }}>ムカログ</h2>
-        <p style={{ marginBottom: "24px" }}>読み込み中...</p>
         <div
           style={{
             width: "40px",
@@ -232,7 +230,6 @@ function LoginContent() {
         }}
       >
         <h2 style={{ color: "#F97316", marginBottom: "16px" }}>ムカログ</h2>
-        <p style={{ marginBottom: "24px" }}>準備中...</p>
         <div
           style={{
             width: "40px",
@@ -492,7 +489,6 @@ function LoginFallback() {
       }}
     >
       <h2 style={{ color: "#F97316", marginBottom: "16px" }}>ムカログ</h2>
-      <p style={{ marginBottom: "24px" }}>読み込み中...</p>
       <div
         style={{
           width: "40px",

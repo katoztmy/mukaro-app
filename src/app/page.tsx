@@ -5,10 +5,51 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { supabase } from "@/utils/supabase";
 
+// スタイルの型定義
+type ConvertStyle =
+  | "ogiri"
+  | "senryu"
+  | "manabi"
+  | "total_affirmation"
+  | "hissatsu_waza"
+  | "news_bulletin"
+  | "ijin"
+  | "chuunibyou"
+  | "high_consciousness"
+  | "epic_tale";
+
+// スタイルの表示名マッピング
+const styleDisplayNames: Record<ConvertStyle, string> = {
+  ogiri: "大喜利",
+  senryu: "川柳",
+  manabi: "学び",
+  total_affirmation: "全肯定",
+  hissatsu_waza: "必殺技",
+  news_bulletin: "ニュース速報",
+  ijin: "偉人",
+  chuunibyou: "厨二病",
+  high_consciousness: "意識高い系",
+  epic_tale: "壮大な物語",
+};
+
+// スタイルの説明マッピング
+const styleDescriptions: Record<ConvertStyle, string> = {
+  ogiri: "皮肉で笑える一言に変換します",
+  senryu: "5・7・5のリズムに変換します",
+  manabi: "ポジティブな学びに変換します",
+  total_affirmation: "あなたを全力で肯定します",
+  hissatsu_waza: "RPGの必殺技風に変換します",
+  news_bulletin: "ニュース速報風に伝えます",
+  ijin: "偉人の名言風に変換します",
+  chuunibyou: "厨二病風のセリフに変換します",
+  high_consciousness: "意識高い系の言葉に変換します",
+  epic_tale: "壮大な物語の始まりに変換します",
+};
+
 export default function HomePage() {
   const router = useRouter();
   const [inputText, setInputText] = useState("");
-  const [style, setStyle] = useState<"ogiri" | "senryu">("ogiri");
+  const [style, setStyle] = useState<ConvertStyle>("ogiri");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [charCount, setCharCount] = useState(0);
   const [apiLimit, setApiLimit] = useState<{
@@ -279,59 +320,37 @@ export default function HomePage() {
               </label>
               <div
                 style={{
-                  display: "flex",
-                  gap: "8px",
                   marginTop: "8px",
                 }}
               >
-                <button
-                  type="button"
+                <select
+                  value={style}
+                  onChange={(e) => setStyle(e.target.value as ConvertStyle)}
                   style={{
-                    width: "178px",
+                    width: "100%",
                     height: "40px",
-                    borderRadius: "6px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: 500,
+                    padding: "0 12px",
                     fontSize: "14px",
-                    lineHeight: "1.43em",
-                    background:
-                      style === "ogiri"
-                        ? "linear-gradient(to right, #C084FC, #F472B6)"
-                        : "#FFFFFF",
-                    color: style === "ogiri" ? "#FAFAFA" : "#0A0A0A",
-                    border: style === "ogiri" ? "none" : "1px solid #E5E5E5",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => setStyle("ogiri")}
-                >
-                  大喜利
-                </button>
-                <button
-                  type="button"
-                  style={{
-                    width: "180px",
-                    height: "40px",
-                    borderRadius: "6px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
                     fontWeight: 500,
-                    fontSize: "14px",
-                    lineHeight: "1.43em",
-                    background:
-                      style === "senryu"
-                        ? "linear-gradient(to right, #C084FC, #F472B6)"
-                        : "#FFFFFF",
-                    color: style === "senryu" ? "#FAFAFA" : "#0A0A0A",
-                    border: style === "senryu" ? "none" : "1px solid #E5E5E5",
+                    color: "#0A0A0A",
+                    backgroundColor: "#FFFFFF",
+                    border: "1px solid #E5E5E5",
+                    borderRadius: "6px",
+                    outline: "none",
                     cursor: "pointer",
+                    appearance: "none",
+                    backgroundImage: "url('/icons/dropdown-arrow.svg')",
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "right 12px center",
+                    backgroundSize: "12px",
                   }}
-                  onClick={() => setStyle("senryu")}
                 >
-                  川柳
-                </button>
+                  {Object.entries(styleDisplayNames).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
               </div>
               <p
                 style={{
@@ -341,9 +360,7 @@ export default function HomePage() {
                   lineHeight: "1.33em",
                 }}
               >
-                {style === "ogiri"
-                  ? "皮肉で笑える一言に変換します"
-                  : "5・7・5のリズムに変換します"}
+                {styleDescriptions[style]}
               </p>
             </div>
 

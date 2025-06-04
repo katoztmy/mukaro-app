@@ -16,8 +16,24 @@ import {
   updatePostReaction,
   getPostById,
   type Reaction,
+  Post,
+  ConvertStyle,
 } from "@/utils/posts";
 import { supabase } from "@/utils/supabase";
+
+// スタイルの表示名マッピング
+const styleDisplayNames: Record<ConvertStyle, string> = {
+  ogiri: "大喜利",
+  senryu: "川柳",
+  manabi: "学び",
+  total_affirmation: "全肯定",
+  hissatsu_waza: "必殺技",
+  news_bulletin: "ニュース速報",
+  ijin: "偉人",
+  chuunibyou: "厨二病",
+  high_consciousness: "意識高い系",
+  epic_tale: "壮大な物語",
+};
 
 // SearchParamsを使用するコンポーネント
 function ResultContent({
@@ -73,9 +89,9 @@ function ResultContent({
 
 export default function ResultPage() {
   const router = useRouter();
-  const [inputText, setInputText] = useState("");
-  const [style, setStyle] = useState<"ogiri" | "senryu">("ogiri");
-  const [result, setResult] = useState("");
+  const [inputText, setInputText] = useState<string>("");
+  const [style, setStyle] = useState<ConvertStyle>("ogiri");
+  const [result, setResult] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [reaction, setReaction] = useState<"like" | "dislike" | null>(null);
   const [postId, setPostId] = useState<string | null>(null);
@@ -198,7 +214,20 @@ export default function ResultPage() {
           const { post, reaction } = await getPostById(id);
           if (post) {
             setInputText(post.content);
-            setStyle(post.style);
+            // スタイルの型安全な処理
+            if (isValidStyle(post.style)) {
+              console.log(
+                "設定されたスタイル:",
+                post.style,
+                "表示名:",
+                getStyleName(post.style)
+              );
+              setStyle(post.style);
+            } else {
+              // 互換性のないスタイルの場合はデフォルトに
+              console.warn(`Unsupported style: ${post.style}, using default`);
+              setStyle("ogiri");
+            }
             setResult(post.result);
             if (post.category_id) {
               setCategoryId(post.category_id);
@@ -221,7 +250,25 @@ export default function ResultPage() {
       }
 
       setInputText(input);
-      setStyle(styleParam === "senryu" ? "senryu" : "ogiri");
+
+      // styleParamの処理を改善
+      if (styleParam && isValidStyle(styleParam)) {
+        console.log("URLパラメータから有効なスタイルを設定:", styleParam);
+        setStyle(styleParam as ConvertStyle);
+      } else {
+        console.warn(
+          `無効または未定義のスタイルパラメータ: ${styleParam}, デフォルトを使用`
+        );
+        setStyle("ogiri");
+      }
+
+      // URLから取得したスタイル値を安全に取得
+      const safeStyle: ConvertStyle =
+        styleParam && isValidStyle(styleParam)
+          ? (styleParam as ConvertStyle)
+          : "ogiri";
+
+      console.log("保存に使用するスタイル:", safeStyle);
 
       // 結果パラメータがある場合はそれを使用
       if (resultParam) {
@@ -240,11 +287,12 @@ export default function ResultPage() {
               throw new Error("認証情報が見つかりません");
             }
 
-            const newPost = await savePost({
+            // APIを使用して投稿を保存
+            const newPost = await savePostViaApi({
               content: input,
               result: resultParam,
-              style: styleParam === "senryu" ? "senryu" : "ogiri",
-              category_id: category || undefined,
+              style: safeStyle, // React stateではなくURLパラメータから直接取得した値
+              categoryId: category || undefined,
             });
 
             setPostId(newPost.id);
@@ -277,13 +325,11 @@ export default function ResultPage() {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                ...(currentToken && {
-                  Authorization: `Bearer ${currentToken}`,
-                }),
+                Authorization: `Bearer ${currentToken}`,
               },
               body: JSON.stringify({
                 text: input,
-                style: styleParam === "senryu" ? "senryu" : "ogiri",
+                style: style,
               }),
             });
 
@@ -300,11 +346,12 @@ export default function ResultPage() {
               setSaving(true);
 
               try {
-                const newPost = await savePost({
+                // 新しい投稿を保存
+                const newPost = await savePostViaApi({
                   content: input,
                   result: data.result,
-                  style: styleParam === "senryu" ? "senryu" : "ogiri",
-                  category_id: category || undefined,
+                  style: safeStyle, // React stateではなくURLパラメータから直接取得した値
+                  categoryId: category || undefined,
                 });
 
                 setPostId(newPost.id);
@@ -354,14 +401,14 @@ export default function ResultPage() {
 
   const shareOnTwitter = () => {
     const text = encodeURIComponent(
-      `${result}\n\n#ムカログ #${style === "ogiri" ? "大喜利" : "川柳"}`
+      `${result}\n\n#ムカログ #${getStyleName(style)}`
     );
     window.open(`https://twitter.com/intent/tweet?text=${text}`, "_blank");
   };
 
   const shareOnLine = () => {
     const text = encodeURIComponent(
-      `${result}\n\n#ムカログ #${style === "ogiri" ? "大喜利" : "川柳"}`
+      `${result}\n\n#ムカログ #${getStyleName(style)}`
     );
     window.open(`https://line.me/R/msg/text/?${text}`, "_blank");
   };
@@ -371,6 +418,14 @@ export default function ResultPage() {
     if (apiLimit.remainingCalls <= 0) {
       alert("本日の変換回数制限に達しました。明日またお試しください。");
       return;
+    }
+
+    // 現在のスタイルが有効か確認
+    if (!isValidStyle(style)) {
+      console.warn(
+        `現在のスタイルが無効です: ${style}, デフォルトを使用します`
+      );
+      setStyle("ogiri");
     }
 
     // 新しい結果を取得するために、結果パラメータなしでAPIを再度呼び出す
@@ -384,6 +439,13 @@ export default function ResultPage() {
         if (!currentToken) {
           throw new Error("認証情報が見つかりません。再ログインしてください。");
         }
+
+        console.log(
+          "convertAgain: 使用するスタイル:",
+          style,
+          "表示名:",
+          getStyleName(style)
+        );
 
         const response = await fetch("/api/convert", {
           method: "POST",
@@ -420,11 +482,11 @@ export default function ResultPage() {
         hasSavedRef.current = true; // 保存済みとしてマーク
 
         try {
-          const newPost = await savePost({
+          const newPost = await savePostViaApi({
             content: inputText,
             result: data.result,
-            style: style,
-            category_id: categoryId || undefined,
+            style: style, // 現在のスタイルをそのまま使用
+            categoryId: categoryId || undefined,
           });
 
           setPostId(newPost.id);
@@ -432,7 +494,7 @@ export default function ResultPage() {
           // 新しい投稿IDをURLに追加
           const params = new URLSearchParams();
           params.set("input", inputText);
-          params.set("style", style);
+          params.set("style", style); // 現在のスタイルをそのまま使用
           params.set("result", data.result);
           params.set("id", newPost.id);
           if (categoryId) {
@@ -485,6 +547,117 @@ export default function ResultPage() {
       return session.access_token;
     }
     return null;
+  };
+
+  // 値がConvertStyle型かどうかを検証する関数
+  const isValidStyle = (styleValue: any): styleValue is ConvertStyle => {
+    const validStyles: ConvertStyle[] = [
+      "ogiri",
+      "senryu",
+      "manabi",
+      "total_affirmation",
+      "hissatsu_waza",
+      "news_bulletin",
+      "ijin",
+      "chuunibyou",
+      "high_consciousness",
+      "epic_tale",
+    ];
+
+    console.log(
+      `isValidStyle - チェック対象: "${styleValue}", 結果:`,
+      validStyles.includes(styleValue as ConvertStyle)
+    );
+    return validStyles.includes(styleValue as ConvertStyle);
+  };
+
+  // スタイル名を取得
+  const getStyleName = (styleKey: string): string => {
+    const displayName = styleDisplayNames[styleKey as ConvertStyle] || styleKey;
+    console.log(
+      `getStyleName呼び出し - styleKey: ${styleKey}, 表示名: ${displayName}`
+    );
+    return displayName;
+  };
+
+  // APIを使用して投稿を保存する関数
+  const savePostViaApi = async ({
+    content,
+    result,
+    style,
+    categoryId,
+  }: {
+    content: string;
+    result: string;
+    style: ConvertStyle;
+    categoryId?: string;
+  }) => {
+    // 保存開始時のスタイル値をログ出力
+    console.log("savePostViaApi - 初期スタイル:", style);
+    console.log("現在有効なスタイル一覧:", [
+      "ogiri",
+      "senryu",
+      "manabi",
+      "total_affirmation",
+      "hissatsu_waza",
+      "news_bulletin",
+      "ijin",
+      "chuunibyou",
+      "high_consciousness",
+      "epic_tale",
+    ]);
+
+    // スタイル値のコピーを作成（関数のパラメータを直接変更しないため）
+    let styleToSave = style;
+
+    // スタイルの有効性を確認
+    if (!isValidStyle(styleToSave)) {
+      console.warn(
+        `無効なスタイルで保存が試みられました: ${styleToSave}, デフォルトを使用します`
+      );
+      styleToSave = "ogiri";
+    }
+
+    // 検証後のスタイル値をログ出力
+    console.log("savePostViaApi - 検証後のスタイル:", styleToSave);
+
+    // 認証トークンを取得
+    const currentToken = token || (await getAuthToken());
+    if (!currentToken) {
+      throw new Error("認証情報が見つかりません。再ログインしてください。");
+    }
+
+    // リクエストボディの作成
+    const requestBody = {
+      content,
+      result,
+      style: styleToSave, // 検証済みのスタイルを使用
+      categoryId,
+    };
+
+    // 送信するリクエストボディをログ出力
+    console.log("savePostViaApi - 送信するリクエストボディ:", requestBody);
+
+    // API呼び出し
+    const response = await fetch("/api/save-post", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${currentToken}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("savePostViaApi - APIエラー:", errorData);
+      throw new Error(errorData.error || "投稿の保存に失敗しました");
+    }
+
+    const data = await response.json();
+    console.log("savePostViaApi - 保存成功:", data.post);
+
+    return data.post;
   };
 
   return (
@@ -569,7 +742,10 @@ export default function ResultPage() {
                 lineHeight: "1.33em",
               }}
             >
-              {style === "ogiri" ? "大喜利" : "川柳"}
+              {(() => {
+                console.log("レンダリング中のスタイル:", style);
+                return getStyleName(style);
+              })()}
             </span>
           </div>
           {loading ? (
