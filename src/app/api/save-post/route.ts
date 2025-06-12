@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { ConvertStyle } from "@/utils/posts";
+import { analyzeCategory } from "@/utils/categoryAnalysis";
 
 // Supabaseクライアント初期化（サーバーサイドで使用するため）
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -68,12 +69,24 @@ export async function POST(request: Request) {
       );
     }
 
+    // AIカテゴリ分析を実行（並行処理）
+    let categoryAnalysisResult = null;
+    try {
+      categoryAnalysisResult = await analyzeCategory(content);
+      console.log("カテゴリ分析結果:", categoryAnalysisResult);
+    } catch (error) {
+      console.error("カテゴリ分析エラー:", error);
+      // 分析に失敗してもエラーにはしない
+    }
+
     // 投稿データの作成
     const postData = {
       content,
       result,
       style: String(style), // 明示的に文字列に変換
-      category_id: categoryId,
+      category_id: categoryAnalysisResult?.categoryId || categoryId,
+      ai_category_confidence: categoryAnalysisResult?.confidence,
+      ai_analyzed_at: categoryAnalysisResult ? new Date().toISOString() : null,
       user_id: user.id,
     };
 

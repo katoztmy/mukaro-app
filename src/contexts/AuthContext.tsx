@@ -216,9 +216,49 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // サインアウト機能
   const signOut = async () => {
-    await supabase.auth.signOut();
-    // サインアウト後のセッション状態更新はonAuthStateChangeに任せる
-    // 明示的なsetStateを避ける
+    try {
+      // Supabaseのセッションを明示的に削除
+      const { error } = await supabase.auth.signOut({ scope: "global" });
+      if (error) {
+        console.error("サインアウトエラー:", error);
+      }
+
+      // 状態をリセット
+      setUser(null);
+      setSession(null);
+
+      // ブラウザのストレージをクリア
+      if (typeof window !== "undefined") {
+        try {
+          // Supabase関連のローカルストレージをクリア
+          const keysToRemove = [
+            "supabase.auth.token",
+            "supabase.auth.refreshToken",
+            "supabase.auth.accessToken",
+            "sb-refresh-token",
+            "sb-access-token",
+            "supabase-auth-token",
+          ];
+
+          // 特定のキーを削除
+          keysToRemove.forEach((key) => {
+            localStorage.removeItem(key);
+          });
+
+          // セッションストレージからも削除
+          keysToRemove.forEach((key) => {
+            sessionStorage.removeItem(key);
+          });
+        } catch (e) {
+          console.error("ストレージクリアエラー:", e);
+        }
+      }
+    } catch (error) {
+      console.error("サインアウト処理エラー:", error);
+      // エラーが発生してもユーザーとセッション情報はクリア
+      setUser(null);
+      setSession(null);
+    }
   };
 
   // パスワードリセット機能

@@ -38,27 +38,26 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
     router.push("/history");
   };
 
+  const goToCollection = () => {
+    router.push("/collection");
+  };
+
+  const goToCategoryTest = () => {
+    router.push("/category-test");
+  };
+
   const goToUserProfile = () => {
     router.push("/profile");
   };
 
   const handleLogout = async () => {
     try {
-      // クッキーとセッションストレージをクリア
-      document.cookie.split(";").forEach(function (c) {
-        document.cookie = c
-          .replace(/^ +/, "")
-          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      });
-
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem("auth_redirect_completed");
-      }
-
-      await signOut();
-      router.push("/login");
+      // ログアウト専用ページにリダイレクト
+      window.location.href = "/logout";
     } catch (error) {
       console.error("ログアウトエラー:", error);
+      // エラーが発生しても強制的にリダイレクト
+      window.location.href = "/logout";
     }
   };
 
@@ -158,6 +157,54 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
                 />
               </button>
             )}
+
+            <button
+              onClick={goToCollection}
+              style={{
+                width: "32px",
+                height: "36px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "6px",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+              aria-label="称号コレクション"
+              title="称号コレクション"
+            >
+              <Image
+                src="/icons/collection-icon.svg"
+                alt="コレクション"
+                width={20}
+                height={20}
+              />
+            </button>
+
+            <button
+              onClick={goToCategoryTest}
+              style={{
+                width: "32px",
+                height: "36px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "6px",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+              aria-label="AI分析"
+              title="AI分析"
+            >
+              <Image
+                src="/icons/ai-analysis-icon.svg"
+                alt="AI分析"
+                width={20}
+                height={20}
+              />
+            </button>
 
             <button
               onClick={handleLogout}

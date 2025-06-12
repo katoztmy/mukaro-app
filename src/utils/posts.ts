@@ -32,6 +32,7 @@ export type Post = {
   updated_at?: string;
   user_id?: string;
   categories?: Category; // カテゴリデータ（JOINで取得した場合）
+  reaction?: "like" | "dislike" | null; // リアクション情報
 };
 
 // リアクションの型定義
@@ -153,7 +154,7 @@ export const savePost = async (post: {
   return data?.[0] as Post;
 };
 
-// 投稿の取得
+// 投稿の取得（リアクション情報付き）
 export const getPosts = async (): Promise<Post[]> => {
   try {
     const {
@@ -165,17 +166,38 @@ export const getPosts = async (): Promise<Post[]> => {
     }
 
     // ユーザーの投稿を全て取得
-    const { data, error } = await supabase
+    const { data: posts, error: postsError } = await supabase
       .from("posts")
       .select("*, categories(*)")
       .eq("user_id", session.user.id)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      throw error;
+    if (postsError) {
+      throw postsError;
     }
 
-    return data;
+    // 各投稿のリアクション情報を取得
+    const postsWithReactions = await Promise.all(
+      posts.map(async (post) => {
+        const { data: reaction, error: reactionError } = await supabase
+          .from("reactions")
+          .select("type")
+          .eq("post_id", post.id)
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+
+        if (reactionError) {
+          console.error("リアクション取得エラー:", reactionError);
+        }
+
+        return {
+          ...post,
+          reaction: reaction?.type || null,
+        };
+      })
+    );
+
+    return postsWithReactions;
   } catch (error) {
     console.error("投稿の取得に失敗しました:", error);
     throw error;

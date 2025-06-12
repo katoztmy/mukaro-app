@@ -1,0 +1,18 @@
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- AI分析アイコン -->
+  <!-- メインの脳/AI -->
+  <circle cx="10" cy="8" r="6" fill="#F97316" opacity="0.2"/>
+  <circle cx="10" cy="8" r="4" fill="#F97316" opacity="0.4"/>
+  
+  <!-- AIの目 -->
+  <circle cx="8" cy="7" r="1" fill="#374151"/>
+  <circle cx="12" cy="7" r="1" fill="#374151"/>
+  
+  <!-- 分析の波形/データ -->
+  <path d="M4 15 L6 13 L8 15 L10 12 L12 15 L14 13 L16 15" stroke="#F97316" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- 分析結果の点 -->
+  <circle cx="6" cy="13" r="1" fill="#EC4899"/>
+  <circle cx="10" cy="12" r="1" fill="#10B981"/>
+  <circle cx="14" cy="13" r="1" fill="#3B82F6"/>
+</svg>

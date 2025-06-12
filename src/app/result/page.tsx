@@ -20,6 +20,8 @@ import {
   ConvertStyle,
 } from "@/utils/posts";
 import { supabase } from "@/utils/supabase";
+import { useAchievement } from "@/hooks/useAchievement";
+import BadgeUnlockModal from "@/components/BadgeUnlockModal";
 
 // スタイルの表示名マッピング
 const styleDisplayNames: Record<ConvertStyle, string> = {
@@ -110,6 +112,13 @@ export default function ResultPage() {
     category: string | null;
     fromHome: boolean;
   } | null>(null);
+
+  // 称号システム関連の状態
+  const {
+    refreshCounter,
+    newlyUnlockedBadge,
+    clearNewlyUnlockedBadge,
+  } = useAchievement();
 
   // 投稿が保存されたかどうかを追跡するref
   const hasSavedRef = useRef(false);
@@ -393,6 +402,11 @@ export default function ResultPage() {
     if (postId) {
       try {
         await updatePostReaction(postId, type);
+        
+        // 「スッキリした」ボタンがクリックされた場合は供養カウンターを再計算
+        if (type === "like") {
+          await refreshCounter();
+        }
       } catch (error) {
         console.error("リアクションの更新に失敗しました:", error);
       }
@@ -1080,6 +1094,13 @@ export default function ResultPage() {
             : `本日の変換残り回数: ${apiLimit.remainingCalls}/${apiLimit.maxDailyLimit}回`}
         </p>
       </main>
+
+      {/* 称号獲得通知モーダル */}
+      <BadgeUnlockModal
+        badge={newlyUnlockedBadge}
+        isOpen={!!newlyUnlockedBadge}
+        onClose={clearNewlyUnlockedBadge}
+      />
     </div>
   );
 }

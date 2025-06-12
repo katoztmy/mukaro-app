@@ -376,12 +376,72 @@ export default function HistoryPage() {
                         fontWeight: 500,
                         color: "#111827",
                         lineHeight: "1.43em",
-                        marginBottom: "8px",
+                        marginBottom: "12px",
                       }}
                     >
                       {post.result}
                     </p>
-                    {/* リアクション表示は別途実装できますが、今回は省略 */}
+                    
+                    {/* リアクション表示 */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <div style={{ flex: 1 }} />
+                      
+                      {post.reaction ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "4px 8px",
+                            borderRadius: "12px",
+                            backgroundColor: post.reaction === "like" ? "#F0FDF4" : "#FEF2F2",
+                            border: `1px solid ${post.reaction === "like" ? "#BBF7D0" : "#FECACA"}`,
+                          }}
+                        >
+                          <span style={{ fontSize: "12px" }}>
+                            {post.reaction === "like" ? "👍" : "👎"}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: 500,
+                              color: post.reaction === "like" ? "#059669" : "#DC2626",
+                            }}
+                          >
+                            {post.reaction === "like" ? "スッキリ！" : "うーん..."}
+                          </span>
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "4px 8px",
+                            borderRadius: "12px",
+                            backgroundColor: "#F9FAFB",
+                            border: "1px solid #E5E7EB",
+                          }}
+                        >
+                          <span style={{ fontSize: "12px" }}>❓</span>
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: 500,
+                              color: "#6B7280",
+                            }}
+                          >
+                            未評価
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

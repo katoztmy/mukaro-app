@@ -4,7 +4,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // 認証が不要なパス
-const publicPaths = ["/login", "/signup"];
+const publicPaths = ["/login", "/signup", "/logout"];
+
+// ログアウト専用のパス
+const logoutPath = "/logout";
 
 // 静的リソースかどうかをチェックする関数
 const isStaticResource = (pathname: string): boolean => {
@@ -23,6 +26,7 @@ const SESSION_COOKIE_NAMES = [
   "sb:session",
   "sb-access-token",
   "sb-refresh-token",
+  "supabase-auth-token",
 ];
 
 export async function middleware(request: NextRequest) {
@@ -32,6 +36,32 @@ export async function middleware(request: NextRequest) {
   // 静的リソースは常に許可
   if (isStaticResource(pathname)) {
     return NextResponse.next();
+  }
+
+  // ログアウトパスへのアクセスを処理
+  if (pathname === logoutPath) {
+    // ログアウト後はログインページにリダイレクト
+    const response = NextResponse.redirect(new URL("/login", request.url));
+
+    // 認証関連のクッキーを削除
+    SESSION_COOKIE_NAMES.forEach((name) => {
+      response.cookies.set(name, "", {
+        maxAge: 0,
+        path: "/",
+      });
+    });
+
+    // リダイレクト関連のクッキーもクリア
+    response.cookies.set("redirect_count", "0", {
+      maxAge: 60,
+      path: "/",
+    });
+    response.cookies.set("auth_redirect_completed", "", {
+      maxAge: 0,
+      path: "/",
+    });
+
+    return response;
   }
 
   // 公開パスは認証不要 - auth_redirect_completedフラグをクリア
