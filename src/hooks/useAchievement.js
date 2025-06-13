@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getLikedPostsCount } from "@/utils/posts";
+import { getUserPostsCount } from "@/utils/posts";
 
 // 称号の定義
 export const ACHIEVEMENT_BADGES = [
@@ -96,14 +96,22 @@ export const useAchievement = () => {
     }
   }, []);
 
-  // Supabaseから実際の「いいね」数を取得
-  const loadLikeCount = useCallback(async () => {
+  // 開発用：称号データをリセットする関数
+  const resetAchievements = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setUnlockedBadges([]);
+    setNewlyUnlockedBadge(null);
+    console.log("称号データをリセットしました");
+  }, []);
+
+  // Supabaseから実際の投稿数を取得
+  const loadPostCount = useCallback(async () => {
     try {
-      const likeCount = await getLikedPostsCount();
-      setCounter(likeCount);
-      return likeCount;
+      const postCount = await getUserPostsCount();
+      setCounter(postCount);
+      return postCount;
     } catch (error) {
-      console.error("Like count load error:", error);
+      console.error("Post count load error:", error);
       return 0;
     }
   }, []);
@@ -126,9 +134,9 @@ export const useAchievement = () => {
     );
   }, []);
 
-  // リアクション変更後にカウンターを再計算（供養ボタンクリック時に呼ばれる）
+  // 投稿後にカウンターを再計算（新規投稿時に呼ばれる）
   const refreshCounter = useCallback(async () => {
-    const newCounter = await loadLikeCount();
+    const newCounter = await loadPostCount();
     
     // 新しい称号の獲得をチェック
     const newBadge = checkForNewBadge(newCounter, unlockedBadges);
@@ -139,14 +147,14 @@ export const useAchievement = () => {
     }
     
     return newCounter;
-  }, [loadLikeCount, unlockedBadges, saveUnlockedBadges, checkForNewBadge]);
+  }, [loadPostCount, unlockedBadges, saveUnlockedBadges, checkForNewBadge]);
 
   // 初期化時にデータを読み込み
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true);
       loadUnlockedBadges();
-      const currentCount = await loadLikeCount();
+      const currentCount = await loadPostCount();
       
       // 初期化時に既に条件を満たしている称号があるかチェック
       const storedBadges = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -161,7 +169,7 @@ export const useAchievement = () => {
     };
     
     initializeData();
-  }, [loadUnlockedBadges, loadLikeCount, checkForNewBadge, saveUnlockedBadges]);
+  }, [loadUnlockedBadges, loadPostCount, checkForNewBadge, saveUnlockedBadges]);
 
   // 新しく獲得した称号のモーダルを閉じる
   const clearNewlyUnlockedBadge = useCallback(() => {
@@ -214,7 +222,7 @@ export const useAchievement = () => {
 
   // 手動で称号解放をチェックする関数
   const checkAndUnlockBadges = useCallback(async () => {
-    const currentCount = await loadLikeCount();
+    const currentCount = await loadPostCount();
     const currentUnlockedBadges = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     
     // 解放可能な称号をすべてチェック
@@ -232,7 +240,7 @@ export const useAchievement = () => {
     }
     
     return 0;
-  }, [loadLikeCount, saveUnlockedBadges]);
+  }, [loadPostCount, saveUnlockedBadges]);
 
   return {
     // データ
@@ -245,6 +253,7 @@ export const useAchievement = () => {
     refreshCounter,
     clearNewlyUnlockedBadge,
     checkAndUnlockBadges,
+    resetAchievements, // 開発用
 
     // 取得メソッド
     getUnlockedBadgeDetails,

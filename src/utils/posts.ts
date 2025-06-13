@@ -12,7 +12,11 @@ export type ConvertStyle =
   | "ijin"
   | "chuunibyou"
   | "high_consciousness"
-  | "epic_tale";
+  | "epic_tale"
+  | "spring_seasonal"
+  | "summer_seasonal" 
+  | "autumn_seasonal"
+  | "winter_seasonal";
 
 // カテゴリの型定義
 export type Category = {
@@ -227,6 +231,30 @@ export const getLikedPostsCount = async (): Promise<number> => {
   }
 
   return data?.length || 0;
+};
+
+// ユーザーの総投稿数を取得する関数（称号システム用）
+export const getUserPostsCount = async (): Promise<number> => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return 0;
+  }
+
+  // ユーザーの投稿数を取得
+  const { count, error } = await supabase
+    .from("posts")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("投稿数の取得に失敗しました:", error);
+    return 0;
+  }
+
+  return count || 0;
 };
 
 // 投稿のリアクションを更新または作成する関数

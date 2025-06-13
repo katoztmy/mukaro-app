@@ -10,9 +10,10 @@ import GuideMode from "../GuideMode";
 
 type HeaderProps = {
   showHistoryButton?: boolean;
+  seasonTheme?: 'spring' | 'summer' | 'autumn' | 'winter' | null;
 };
 
-export default function Header({ showHistoryButton = true }: HeaderProps) {
+export default function Header({ showHistoryButton = true, seasonTheme = null }: HeaderProps) {
   const router = useRouter();
   const { signOut, user, session, refreshSession } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -44,6 +45,10 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
     router.push("/collection");
   };
 
+  const goToCalendar = () => {
+    router.push("/calendar");
+  };
+
 
   const goToUserProfile = () => {
     router.push("/profile");
@@ -68,13 +73,57 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
     }
   };
 
-  return (
-    <header
-      style={{
+  // 季節テーマに応じたヘッダースタイルを取得
+  const getSeasonalHeaderStyle = () => {
+    if (!seasonTheme) {
+      return {
         backgroundColor: "#FFFFFF",
         borderBottom: "1px solid #E5E5E5",
         boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
-      }}
+      };
+    }
+
+    switch (seasonTheme) {
+      case 'spring':
+        return {
+          backgroundColor: "rgba(254, 243, 199, 0.9)",
+          borderBottom: "1px solid rgba(251, 191, 36, 0.3)",
+          boxShadow: "0px 1px 2px 0px rgba(249, 115, 22, 0.1)",
+          backdropFilter: "blur(10px)",
+        };
+      case 'summer':
+        return {
+          backgroundColor: "rgba(219, 234, 254, 0.9)",
+          borderBottom: "1px solid rgba(59, 130, 246, 0.3)",
+          boxShadow: "0px 1px 2px 0px rgba(59, 130, 246, 0.1)",
+          backdropFilter: "blur(10px)",
+        };
+      case 'autumn':
+        return {
+          backgroundColor: "rgba(254, 215, 170, 0.9)",
+          borderBottom: "1px solid rgba(251, 146, 60, 0.3)",
+          boxShadow: "0px 1px 2px 0px rgba(251, 146, 60, 0.1)",
+          backdropFilter: "blur(10px)",
+        };
+      case 'winter':
+        return {
+          backgroundColor: "rgba(229, 231, 235, 0.9)",
+          borderBottom: "1px solid rgba(156, 163, 175, 0.3)",
+          boxShadow: "0px 1px 2px 0px rgba(107, 114, 128, 0.1)",
+          backdropFilter: "blur(10px)",
+        };
+      default:
+        return {
+          backgroundColor: "#FFFFFF",
+          borderBottom: "1px solid #E5E5E5",
+          boxShadow: "0px 1px 2px 0px rgba(0, 0, 0, 0.05)",
+        };
+    }
+  };
+
+  return (
+    <header
+      style={getSeasonalHeaderStyle()}
     >
       <div
         style={{
@@ -187,6 +236,32 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
                 width={20}
                 height={20}
               />
+            </button>
+
+            <button
+              onClick={goToCalendar}
+              style={{
+                width: "32px",
+                height: "36px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "6px",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+              aria-label="ムカつきカレンダー"
+              title="ムカつきカレンダー"
+            >
+              <div
+                style={{
+                  fontSize: "18px",
+                  color: "#6B7280",
+                }}
+              >
+                📅
+              </div>
             </button>
 
             <button

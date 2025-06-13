@@ -80,6 +80,10 @@ export async function POST(request: Request) {
       "chuunibyou",
       "high_consciousness",
       "epic_tale",
+      "spring_seasonal",
+      "summer_seasonal",
+      "autumn_seasonal",
+      "winter_seasonal",
     ];
 
     if (!style || !validStyles.includes(style)) {
@@ -200,36 +204,43 @@ export async function POST(request: Request) {
       `;
     }
 
-    // OpenAI APIにリクエスト
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content:
-            "あなたは皮肉とユーモアのセンスがある文章変換のエキスパートです。",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.8,
-      max_tokens: 150,
-      top_p: 1,
-      frequency_penalty: 0.3,
-      presence_penalty: 0.3,
-    });
+    let result: string;
+
+    // 季節限定スタイルの場合は専用関数を使用
+    if (style.endsWith('_seasonal')) {
+      const season = style.replace('_seasonal', '') as 'spring' | 'summer' | 'autumn' | 'winter';
+      result = await convertToSeasonalStyle(text, season);
+    } else {
+      // 通常のスタイルの場合は従来のOpenAI API呼び出し
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content:
+              "あなたは皮肉とユーモアのセンスがある文章変換のエキスパートです。",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.8,
+        max_tokens: 150,
+        top_p: 1,
+        frequency_penalty: 0.3,
+        presence_penalty: 0.3,
+      });
+
+      // APIからの応答を整形
+      result = completion.choices[0].message.content?.trim() || "変換に失敗しました";
+    }
 
     // API使用回数をインクリメント
     await incrementApiUsage(user.id);
 
     // 残りの使用回数を取得（インクリメント後）
     const updatedUsage = await getUserApiUsage(user.id);
-
-    // APIからの応答を整形
-    const result =
-      completion.choices[0].message.content?.trim() || "変換に失敗しました";
 
     // 結果をクライアントに返す
     return NextResponse.json({

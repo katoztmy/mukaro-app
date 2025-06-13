@@ -11,8 +11,11 @@ export default function LogoutPage() {
   useEffect(() => {
     async function performLogout() {
       try {
+        console.log("ログアウト処理を開始します");
+        
         // Supabaseのログアウト処理を実行
         await signOut();
+        console.log("Supabaseログアウト完了");
 
         // ブラウザのストレージをクリア
         if (typeof window !== "undefined") {
@@ -32,12 +35,19 @@ export default function LogoutPage() {
           });
         }
 
-        // 最終手段として強制的にページをリロード
-        window.location.href = "/login";
+        console.log("ストレージクリア完了");
+
+        // 少し待ってからリダイレクト
+        setTimeout(() => {
+          console.log("ログインページにリダイレクトします");
+          window.location.href = "/login";
+        }, 1000);
       } catch (error) {
         console.error("ログアウト中にエラーが発生しました:", error);
-        // エラーが発生した場合も強制的にリダイレクト
-        window.location.href = "/login";
+        // エラーが発生した場合も少し待ってからリダイレクト
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 1000);
       }
     }
 

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { supabase } from "@/utils/supabase";
+import SeasonalAnimations from "@/components/SeasonalAnimations";
 
 // スタイルの型定義
 type ConvertStyle =
@@ -16,7 +17,11 @@ type ConvertStyle =
   | "ijin"
   | "chuunibyou"
   | "high_consciousness"
-  | "epic_tale";
+  | "epic_tale"
+  | "spring_seasonal"
+  | "summer_seasonal"
+  | "autumn_seasonal"
+  | "winter_seasonal";
 
 // スタイルの表示名マッピング
 const styleDisplayNames: Record<ConvertStyle, string> = {
@@ -30,6 +35,10 @@ const styleDisplayNames: Record<ConvertStyle, string> = {
   chuunibyou: "厨二病",
   high_consciousness: "意識高い系",
   epic_tale: "壮大な物語",
+  spring_seasonal: "春限定🌸",
+  summer_seasonal: "夏限定🌻",
+  autumn_seasonal: "秋限定🍁",
+  winter_seasonal: "冬限定❄️",
 };
 
 // スタイルの説明マッピング
@@ -44,6 +53,10 @@ const styleDescriptions: Record<ConvertStyle, string> = {
   chuunibyou: "厨二病風のセリフに変換します",
   high_consciousness: "意識高い系の言葉に変換します",
   epic_tale: "壮大な物語の始まりに変換します",
+  spring_seasonal: "桜と新緑の詩的な表現に変換",
+  summer_seasonal: "夏祭りと花火の爽やかな表現に変換",
+  autumn_seasonal: "紅葉と読書の知的な表現に変換",
+  winter_seasonal: "雪と温もりの包容力ある表現に変換",
 };
 
 export default function HomePage() {
@@ -58,6 +71,16 @@ export default function HomePage() {
   }>({ remainingCalls: 5, maxDailyLimit: 5 });
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [seasonTheme, setSeasonTheme] = useState<'spring' | 'summer' | 'autumn' | 'winter' | null>(null);
+
+  // 季節アニメーションの状態（デザインテーマのみ）
+  const getSeasonFromStyle = (selectedStyle: ConvertStyle): 'spring' | 'summer' | 'autumn' | 'winter' | null => {
+    if (selectedStyle === 'spring_seasonal') return 'spring';
+    if (selectedStyle === 'summer_seasonal') return 'summer';
+    if (selectedStyle === 'autumn_seasonal') return 'autumn';
+    if (selectedStyle === 'winter_seasonal') return 'winter';
+    return null;
+  };
 
   const MIN_CHARS = 10;
   const MAX_CHARS = 200;
@@ -214,9 +237,12 @@ export default function HomePage() {
   };
 
   return (
-    <div style={{ backgroundColor: "#F9FAFB", minHeight: "100vh" }}>
+    <div style={{ backgroundColor: seasonTheme ? "transparent" : "#F9FAFB", minHeight: "100vh" }}>
+      {/* 季節アニメーション */}
+      <SeasonalAnimations season={seasonTheme} />
+      
       {/* ヘッダー */}
-      <Header />
+      <Header seasonTheme={seasonTheme} />
 
       {/* メインコンテンツ */}
       <main style={{ maxWidth: "448px", margin: "0 auto" }}>
@@ -318,11 +344,9 @@ export default function HomePage() {
               >
                 変換スタイル
               </label>
-              <div
-                style={{
-                  marginTop: "8px",
-                }}
-              >
+              
+              {/* 通常のスタイル */}
+              <div style={{ marginTop: "8px" }}>
                 <select
                   value={style}
                   onChange={(e) => setStyle(e.target.value as ConvertStyle)}
@@ -345,13 +369,85 @@ export default function HomePage() {
                     backgroundSize: "12px",
                   }}
                 >
-                  {Object.entries(styleDisplayNames).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
+                  {Object.entries(styleDisplayNames)
+                    .filter(([value]) => !value.includes('seasonal'))
+                    .map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
                 </select>
               </div>
+
+              {/* 季節デザインテーマ */}
+              <div style={{ marginTop: "16px" }}>
+                <div style={{
+                  background: "linear-gradient(135deg, #FEF3C7 0%, #DBEAFE 50%, #FECACA 100%)",
+                  border: "1px solid #E5E5E5",
+                  borderRadius: "8px",
+                  padding: "16px",
+                  marginBottom: "8px"
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    marginBottom: "8px"
+                  }}>
+                    <span style={{ fontSize: "16px" }}>✨</span>
+                    <span style={{
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      color: "#374151"
+                    }}>
+                      季節デザインテーマ
+                    </span>
+                  </div>
+                  <p style={{
+                    fontSize: "12px",
+                    color: "#6B7280",
+                    marginBottom: "12px",
+                    margin: "0 0 12px 0"
+                  }}>
+                    ページの見た目を季節に合わせて変更します
+                  </p>
+                  
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, 1fr)",
+                    gap: "8px"
+                  }}>
+                    {[
+                      { season: 'spring', label: '春🌸', theme: 'spring' },
+                      { season: 'summer', label: '夏🌻', theme: 'summer' },
+                      { season: 'autumn', label: '秋🍁', theme: 'autumn' },
+                      { season: 'winter', label: '冬❄️', theme: 'winter' }
+                    ].map(({ season, label, theme }) => (
+                      <button
+                        key={season}
+                        type="button"
+                        onClick={() => setSeasonTheme(seasonTheme === theme ? null : theme as any)}
+                        style={{
+                          padding: "12px 8px",
+                          borderRadius: "6px",
+                          border: seasonTheme === theme ? "2px solid #F97316" : "1px solid #E5E5E5",
+                          backgroundColor: seasonTheme === theme ? "#FFF7ED" : "#FFFFFF",
+                          color: seasonTheme === theme ? "#F97316" : "#374151",
+                          fontWeight: seasonTheme === theme ? 600 : 500,
+                          fontSize: "13px",
+                          cursor: "pointer",
+                          textAlign: "center",
+                          transition: "all 0.2s ease",
+                          boxShadow: seasonTheme === theme ? "0 2px 4px rgba(249, 115, 22, 0.1)" : "none"
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               <p
                 style={{
                   fontSize: "12px",
@@ -362,6 +458,20 @@ export default function HomePage() {
               >
                 {styleDescriptions[style]}
               </p>
+              
+              {seasonTheme && (
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "#F97316",
+                    marginTop: "8px",
+                    lineHeight: "1.33em",
+                    fontWeight: 500,
+                  }}
+                >
+                  🎨 {seasonTheme === 'spring' ? '春' : seasonTheme === 'summer' ? '夏' : seasonTheme === 'autumn' ? '秋' : '冬'}テーマが適用されています
+                </p>
+              )}
             </div>
 
             <button

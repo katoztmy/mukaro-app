@@ -40,28 +40,9 @@ export async function middleware(request: NextRequest) {
 
   // ログアウトパスへのアクセスを処理
   if (pathname === logoutPath) {
-    // ログアウト後はログインページにリダイレクト
-    const response = NextResponse.redirect(new URL("/login", request.url));
-
-    // 認証関連のクッキーを削除
-    SESSION_COOKIE_NAMES.forEach((name) => {
-      response.cookies.set(name, "", {
-        maxAge: 0,
-        path: "/",
-      });
-    });
-
-    // リダイレクト関連のクッキーもクリア
-    response.cookies.set("redirect_count", "0", {
-      maxAge: 60,
-      path: "/",
-    });
-    response.cookies.set("auth_redirect_completed", "", {
-      maxAge: 0,
-      path: "/",
-    });
-
-    return response;
+    // ログアウトページ自体へのアクセスは許可
+    // JavaScriptでログアウト処理を実行後、リダイレクトを行う
+    return NextResponse.next();
   }
 
   // 公開パスは認証不要 - auth_redirect_completedフラグをクリア

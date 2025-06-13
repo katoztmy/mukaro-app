@@ -13,12 +13,8 @@ const CollectionPage = () => {
     getNextBadge,
     getCountToNextBadge,
     getProgressPercentage,
-    checkAndUnlockBadges,
   } = useAchievement();
 
-  const [showMessage, setShowMessage] = useState(false);
-  const [messageText, setMessageText] = useState("");
-  const [messageType, setMessageType] = useState("success"); // "success" or "info"
 
   const unlockedBadges = getUnlockedBadgeDetails();
   const lockedBadges = getLockedBadgeDetails();
@@ -26,23 +22,7 @@ const CollectionPage = () => {
   const countToNext = getCountToNextBadge();
   const progressPercentage = getProgressPercentage();
 
-  // メッセージを表示する関数
-  const showNotification = (text, type = "info") => {
-    setMessageText(text);
-    setMessageType(type);
-    setShowMessage(true);
-    setTimeout(() => setShowMessage(false), 3000);
-  };
 
-  // 解放可能な称号をチェック
-  const handleCheckBadges = async () => {
-    const unlockedCount = await checkAndUnlockBadges();
-    if (unlockedCount === 0) {
-      showNotification("新しく解放可能な称号はありません", "info");
-    } else {
-      showNotification(`${unlockedCount}個の称号を解放しました！`, "success");
-    }
-  };
 
   if (loading) {
     return (
@@ -272,33 +252,6 @@ const CollectionPage = () => {
         )}
       </div>
 
-      {/* 称号チェックボタン */}
-      <div style={{ marginTop: "24px", textAlign: "center" }}>
-        <button
-          onClick={handleCheckBadges}
-          style={{
-            padding: "12px 24px",
-            background: "linear-gradient(to right, #FB923C, #EC4899)",
-            color: "#FFFFFF",
-            fontSize: "14px",
-            fontWeight: 600,
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-          }}
-          onMouseOver={(e) => {
-            e.target.style.transform = "translateY(-1px)";
-            e.target.style.boxShadow = "0 4px 12px rgba(251, 146, 60, 0.4)";
-          }}
-          onMouseOut={(e) => {
-            e.target.style.transform = "translateY(0)";
-            e.target.style.boxShadow = "none";
-          }}
-        >
-          🏆 称号をチェック
-        </button>
-      </div>
 
       {/* 未獲得称号 */}
       <div style={{ marginTop: "24px", marginBottom: "40px" }}>
@@ -410,56 +363,6 @@ const CollectionPage = () => {
           </div>
         )}
       </div>
-
-      {/* 通知メッセージ */}
-      {showMessage && (
-        <div
-          style={{
-            position: "fixed",
-            top: "20px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            backgroundColor: messageType === "success" ? "#F0FDF4" : "#F0F9FF",
-            border: `2px solid ${messageType === "success" ? "#BBF7D0" : "#BAE6FD"}`,
-            borderRadius: "12px",
-            padding: "16px 24px",
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-            zIndex: 1000,
-            maxWidth: "90%",
-            animation: "slideInDown 0.3s ease-out",
-          }}
-        >
-          <style jsx>{`
-            @keyframes slideInDown {
-              from {
-                opacity: 0;
-                transform: translateX(-50%) translateY(-20px);
-              }
-              to {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
-              }
-            }
-          `}</style>
-          
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ fontSize: "18px" }}>
-              {messageType === "success" ? "🎉" : "ℹ️"}
-            </span>
-            <p
-              style={{
-                margin: 0,
-                fontSize: "14px",
-                fontWeight: 500,
-                color: messageType === "success" ? "#059669" : "#0284C7",
-                lineHeight: "1.4em",
-              }}
-            >
-              {messageText}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

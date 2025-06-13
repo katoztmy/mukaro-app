@@ -323,6 +323,9 @@ export default function ResultPage() {
             // URLを更新してホームフラグを削除
             router.replace(`/result?${params.toString()}`);
 
+            // 称号システムの更新
+            await refreshCounter();
+
             // 投稿完了モーダルを表示
             setShowPostSavedModal(true);
           } catch (error) {
@@ -535,6 +538,9 @@ export default function ResultPage() {
             // data.limitがない場合は手動で更新
             await fetchApiUsage(currentToken);
           }
+
+          // 称号システムの更新
+          await refreshCounter();
 
           // 投稿完了モーダルを表示
           setShowPostSavedModal(true);
