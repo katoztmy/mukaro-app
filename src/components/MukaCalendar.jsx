@@ -139,30 +139,49 @@ export default function MukaCalendar() {
     return days;
   };
 
-  // 今日かどうかをチェック
+  // 今日かどうかをチェック（日本時間）
   const isToday = (year, month, day) => {
     const today = new Date();
+    const jstToday = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
     return (
-      year === today.getFullYear() &&
-      month === today.getMonth() &&
-      day === today.getDate()
+      year === jstToday.getFullYear() &&
+      month === jstToday.getMonth() &&
+      day === jstToday.getDate()
     );
   };
 
   const calendarDays = generateCalendarDays();
 
+  // スピナーアニメーション用のコンポーネント
+  const Spinner = () => {
+    const [rotation, setRotation] = useState(0);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setRotation(prev => (prev + 10) % 360);
+      }, 50);
+      
+      return () => clearInterval(interval);
+    }, []);
+
+    return (
+      <div style={{
+        width: '40px',
+        height: '40px',
+        border: '4px solid #F97316',
+        borderRadius: '50%',
+        borderTopColor: 'transparent',
+        transform: `rotate(${rotation}deg)`,
+        transition: 'transform 0.05s linear'
+      }}></div>
+    );
+  };
+
   if (loading) {
     return (
       <div style={{ maxWidth: '448px', margin: '0 auto', padding: '0 16px' }}>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid #F97316',
-            borderRadius: '50%',
-            borderTopColor: 'transparent',
-            animation: 'spin 1s linear infinite'
-          }}></div>
+          <Spinner />
         </div>
       </div>
     );
@@ -269,10 +288,11 @@ export default function MukaCalendar() {
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '20px', fontWeight: 600, color: '#10B981' }}>
               {(() => {
-                // 今日までの日数を計算
+                // 今日までの日数を計算（日本時間）
                 const today = new Date();
-                const isCurrentMonth = currentYear === today.getFullYear() && currentMonth === today.getMonth();
-                const daysUntilToday = isCurrentMonth ? today.getDate() : daysInMonth;
+                const jstToday = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+                const isCurrentMonth = currentYear === jstToday.getFullYear() && currentMonth === jstToday.getMonth();
+                const daysUntilToday = isCurrentMonth ? jstToday.getDate() : daysInMonth;
                 
                 return monthStats.totalPosts > 0 ? Math.round((monthStats.activeDays / daysUntilToday) * 100) : 0;
               })()}%

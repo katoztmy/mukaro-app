@@ -82,7 +82,13 @@ export async function GET(request: Request) {
     const emotionCount: Record<string, number> = {};
 
     posts?.forEach((post) => {
-      const postDate = new Date(post.created_at).toISOString().split('T')[0];
+      // 日本時間での日付を取得
+      const postDate = new Date(post.created_at).toLocaleDateString('ja-JP', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).replace(/\//g, '-');
       
       if (!dailyData[postDate]) {
         dailyData[postDate] = {
