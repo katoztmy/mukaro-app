@@ -22,6 +22,8 @@ import {
 import { supabase } from "@/utils/supabase";
 import { useAchievement } from "@/hooks/useAchievement";
 import BadgeUnlockModal from "@/components/BadgeUnlockModal";
+import PostSavedModal from "@/components/PostSavedModal";
+import GuideMode from "@/components/GuideMode";
 
 // スタイルの表示名マッピング
 const styleDisplayNames: Record<ConvertStyle, string> = {
@@ -122,6 +124,10 @@ export default function ResultPage() {
 
   // 投稿が保存されたかどうかを追跡するref
   const hasSavedRef = useRef(false);
+
+  // 投稿完了モーダルとガイドモードの状態
+  const [showPostSavedModal, setShowPostSavedModal] = useState(false);
+  const [showGuideMode, setShowGuideMode] = useState(false);
 
   // パラメータが既に読み込まれたかを追跡するRef
   const paramsLoadedRef = useRef(false);
@@ -316,6 +322,9 @@ export default function ResultPage() {
 
             // URLを更新してホームフラグを削除
             router.replace(`/result?${params.toString()}`);
+
+            // 投稿完了モーダルを表示
+            setShowPostSavedModal(true);
           } catch (error) {
             console.error("投稿の保存に失敗しました:", error);
           } finally {
@@ -526,6 +535,9 @@ export default function ResultPage() {
             // data.limitがない場合は手動で更新
             await fetchApiUsage(currentToken);
           }
+
+          // 投稿完了モーダルを表示
+          setShowPostSavedModal(true);
         } catch (error) {
           console.error("投稿の保存に失敗しました:", error);
         } finally {
@@ -549,6 +561,20 @@ export default function ResultPage() {
 
   const newInput = () => {
     router.push("/");
+  };
+
+  // 投稿完了モーダルのイベントハンドラー
+  const handleClosePostSavedModal = () => {
+    setShowPostSavedModal(false);
+  };
+
+  const handleStartGuideMode = () => {
+    setShowPostSavedModal(false);
+    setShowGuideMode(true);
+  };
+
+  const handleCloseGuideMode = () => {
+    setShowGuideMode(false);
   };
 
   // 認証トークンを取得するためのヘルパー関数
@@ -1100,6 +1126,22 @@ export default function ResultPage() {
         badge={newlyUnlockedBadge}
         isOpen={!!newlyUnlockedBadge}
         onClose={clearNewlyUnlockedBadge}
+      />
+
+      {/* 投稿完了モーダル */}
+      <PostSavedModal
+        isOpen={showPostSavedModal}
+        onClose={handleClosePostSavedModal}
+        onStartGuideMode={handleStartGuideMode}
+        showGuideOption={true}
+      />
+
+      {/* ガイドモード */}
+      <GuideMode
+        isOpen={showGuideMode}
+        onClose={handleCloseGuideMode}
+        postId={postId}
+        mukaText={inputText}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Image from "next/image";
 import Link from "next/link";
 import { getProfile } from "@/utils/database";
+import GuideMode from "../GuideMode";
 
 type HeaderProps = {
   showHistoryButton?: boolean;
@@ -16,6 +17,7 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
   const { signOut, user, session, refreshSession } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
+  const [isGuideModeOpen, setIsGuideModeOpen] = useState(false);
 
   // マウント時にセッション状態を確認
   useEffect(() => {
@@ -42,12 +44,17 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
     router.push("/collection");
   };
 
-  const goToCategoryTest = () => {
-    router.push("/category-test");
-  };
 
   const goToUserProfile = () => {
     router.push("/profile");
+  };
+
+  const openGuideMode = () => {
+    setIsGuideModeOpen(true);
+  };
+
+  const closeGuideMode = () => {
+    setIsGuideModeOpen(false);
   };
 
   const handleLogout = async () => {
@@ -183,7 +190,7 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
             </button>
 
             <button
-              onClick={goToCategoryTest}
+              onClick={openGuideMode}
               style={{
                 width: "32px",
                 height: "36px",
@@ -195,15 +202,17 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
                 background: "transparent",
                 cursor: "pointer",
               }}
-              aria-label="AI分析"
-              title="AI分析"
+              aria-label="アンガーマネジメント・ガイド"
+              title="アンガーマネジメント・ガイド"
             >
-              <Image
-                src="/icons/ai-analysis-icon.svg"
-                alt="AI分析"
-                width={20}
-                height={20}
-              />
+              <div
+                style={{
+                  fontSize: "18px",
+                  color: "#3B82F6",
+                }}
+              >
+                🧘
+              </div>
             </button>
 
             <button
@@ -232,6 +241,14 @@ export default function Header({ showHistoryButton = true }: HeaderProps) {
           </div>
         )}
       </div>
+
+      {/* ガイドモードモーダル */}
+      <GuideMode 
+        isOpen={isGuideModeOpen} 
+        onClose={closeGuideMode}
+        postId={null}
+        mukaText={null}
+      />
     </header>
   );
 }

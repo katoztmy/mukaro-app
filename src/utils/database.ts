@@ -16,6 +16,8 @@ export type Post = {
   result: string;
   style: "ogiri" | "senryu";
   category_id: string | null;
+  labeled_emotions?: string[] | null;
+  reframing_answer?: string | null;
   created_at: string;
 };
 
